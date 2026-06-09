@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name = "ask-rails"
   spec.version = Ask::Rails::VERSION
   spec.authors = ["Kaka Ruto"]
-  spec.email = ["kaka@anywaye.com"]
+  spec.email = ["kaka@myrrlabs.com"]
 
   spec.summary = "Rails integration for the ask-rb ecosystem"
   spec.description = "Railtie, AR session persistence, session factory, service gem discovery, and generators."
