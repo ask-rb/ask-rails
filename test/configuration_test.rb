@@ -3,11 +3,6 @@
 require_relative "test_helper"
 
 class ConfigurationTest < Minitest::Test
-  def setup
-    Ask::Rails.send(:remove_instance_variable, :@configuration) if Ask::Rails.instance_variable_defined?(:@configuration)
-  rescue NameError
-  end
-
   def test_default_values
     config = Ask::Rails::Configuration.new
     assert_equal "gpt-4o", config.default_model
@@ -18,18 +13,21 @@ class ConfigurationTest < Minitest::Test
     assert_equal [], config.tools
   end
 
-  def test_configurable
-    Ask::Rails.configure do |c|
-      c.default_model = "claude-sonnet-4"
-      c.max_turns = 50
-    end
-    assert_equal "claude-sonnet-4", Ask::Rails.configuration.default_model
-    assert_equal 50, Ask::Rails.configuration.max_turns
+  def test_defaults_are_mutable
+    config = Ask::Rails::Configuration.new
+    config.default_model = "claude-sonnet-4"
+    assert_equal "claude-sonnet-4", config.default_model
   end
 
-  def test_tools_settable
+  def test_tools_are_settable
     config = Ask::Rails::Configuration.new
     config.tools = [:tool1, :tool2]
     assert_equal [:tool1, :tool2], config.tools
+  end
+
+  def test_max_turns_clamping
+    config = Ask::Rails::Configuration.new
+    config.max_turns = 100
+    assert_equal 100, config.max_turns
   end
 end

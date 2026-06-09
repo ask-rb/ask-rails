@@ -14,10 +14,9 @@ module Ask
         service_gems.each do |name|
           begin
             require "#{name.tr("-", "/")}/context"
-            mod = name.camelize.constantize
-            contexts << mod if mod.const_defined?(:DESCRIPTION)
+            mod = name.split("-").map(&:capitalize).join.constantize
+            contexts << mod if mod.respond_to?(:const_defined?) && mod.const_defined?(:DESCRIPTION)
           rescue LoadError, NameError
-            # No context module for this gem
           end
         end
 
@@ -34,7 +33,8 @@ module Ask
         sections = ["## Available Services"]
 
         contexts.each do |mod|
-          sections << "### #{mod.name.demodulize}"
+          name = mod.respond_to?(:name) ? mod.name.to_s.split("::").last || "Unknown" : "Unknown"
+          sections << "### #{name}"
           sections << mod::DESCRIPTION if mod.const_defined?(:DESCRIPTION)
           sections << "Documentation: #{mod::DOCS_URL}" if mod.const_defined?(:DOCS_URL)
           sections << "Authentication: #{mod::AUTH_HOW}" if mod.const_defined?(:AUTH_HOW)
