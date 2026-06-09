@@ -1,0 +1,131 @@
+# ask-rails — Rails Integration
+
+## Purpose
+
+The only gem a Rails app needs to join the ask-rb ecosystem. Provides:
+- **Railtie** (not Engine — no routes, no UI, no views to mount)
+- **AR session persistence** — save/load agent sessions to the database
+- **Session factory** — `Ask::Rails.agent_session` creates a pre-configured agent
+- **Service gem discovery** — auto-discovers installed `ask-*` gems, reads their context modules, injects them into the system prompt
+- **Generators** — `rails generate ask_rails:install`
+- **Configuration** — `config.ask_rails.default_model`, `max_turns`, etc.
+
+Transformed from `solid_agents` at `github.com/ask-rb/solid_agents`. Strip the workflow engine, UI, jobs, schedules, error subscriber. Keep and polish the Railtie, generators, persistence, configuration patterns.
+
+## Dependencies
+
+- **Runtime:**
+  - `rails >= 7.1` (core dependency — this is a Rails integration gem)
+  - `ask-tools` (for `Ask::Tool` base class, tool discovery)
+  - `ask-tools-shell` (for execution tools)
+  - `ask-agent` (for `Ask::Agent::Session`)
+  - `ask-auth` (for credential resolution config)
+  - `ruby_llm` (**temporary** — until provider gems replace it)
+- **Build/test:** minitest, mocha, rake, sqlite3 (for test dummy app)
+- **This gem MUST wait until `ask-agent`, `ask-tools`, `ask-tools-shell`, and `ask-auth` are all built, tested, and released.**
+
+## Implementation Steps
+
+### 1. Define the gem scaffold
+- `lib/ask-rails.rb` — entry point
+- `lib/ask/rails.rb` — main module with `configure`, configuration accessors
+- `lib/ask/rails/railtie.rb` — Railtie class (not Engine)
+- `lib/ask/rails/version.rb`
+- `lib/ask/rails/persistence.rb` — ActiveRecord session persistence (lifted from conductor)
+- `lib/ask/rails/configuration.rb` — default configuration, blank normalization
+- `lib/ask/rails/session_factory.rb` — `Ask::Rails.agent_session`
+- `lib/ask/rails/service_discovery.rb` — auto-discovers installed `ask-*` gems
+- `lib/ask/rails/tool.rb` — `Ask::Rails::Tool < Ask::Tool` base for Rails-specific tools
+- `lib/generators/ask/rails/install/install_generator.rb`
+- `app/views/layouts/` — not needed (no Engine, no UI)
+- Write `ask-rails.gemspec`
+
+### 2. Build Railtie (`lib/ask/rails/railtie.rb`)
+- Inherit from `Rails::Railtie` (not `Engine`)
+- `rake_tasks` block to load rake tasks
+- `generators` block — load install generator
+- `initializer "ask_rails.configure_llm"` — configure RubyLLM from app config (env vars)
+- `initializer "ask_rails.discover_tools", after: :eager_load_most` — discover tools in `app/tools/`
+- `initializer "ask_rails.discover_services", after: :eager_load_most` — discover `ask-*` service gems
+
+### 3. Build configuration (`lib/ask/rails/configuration.rb`)
+- `mattr_accessor` style config on the `Ask::Rails` module
+- Options: `default_model`, `max_turns`, `system_prompt`, `tool_concurrency`, `persistence_adapter`
+- Blank normalization: empty strings → `nil` (adopted from ruby_llm 1.16)
+
+### 4. Build service discovery (`lib/ask/rails/service_discovery.rb`)
+- On boot, scan `Gem.loaded_specs` for gems matching `ask-*` (excluding `ask-tools`, `ask-agent`, `ask-rails`, `ask-auth`)
+- For each, `require "#{name.tr('-', '/')}/context"` and read the context module
+- Build a system prompt section from all discovered service contexts:
+  - `DESCRIPTION`, `QUICK_START`, `DOCS_URL`, `AUTH_HOW` from each service
+  - `Error::MAP` from each service's error guide
+- Inject the generated prompt into the session's system prompt
+
+### 5. Build session factory (`lib/ask/rails/session_factory.rb`)
+- `Ask::Rails.agent_session` creates an `Ask::Agent::Session` pre-configured with:
+  - Default model from config
+  - Tools from `Ask::Tools::Shell.all`
+  - Auto-generated system prompt from discovered services
+  - AR persistence if configured
+  - Rails executor wrapping for background job safety
+
+### 6. Build Rails-specific tools
+- `Ask::Rails::Tool < Ask::Tool` — base class with `Rails.root` access
+- `Ask::Rails::ReadFile` — reads files, `Rails.root`-relative paths
+- `Ask::Rails::RunCommand` — runs commands in `Rails.root` context
+- `Ask::Rails::SearchCodebase` — greps the Rails app directory
+- `Ask::Rails::ReadRoute` — reads `config/routes.rb`
+- These are convenience wrappers that save the agent from writing `Rails.root.join(...)` every time
+
+### 7. Build generators (`lib/generators/ask/rails/install/`)
+- `rails generate ask_rails:install`:
+  - Creates migration for session persistence table
+  - Creates initializer with default configuration
+  - Creates `app/tools/` directory for app-specific tools
+- Migration template creates `ask_sessions` table with:
+  - `id`, `session_id` (UUID), `model`, `messages` (jsonb/text), `metadata` (jsonb)
+  - `created_at`, `updated_at`
+
+### 8. Port AR persistence from conductor
+- Move `conductor/persistence/active_record.rb` to `ask/rails/persistence.rb`
+- Adapt to work with `Ask::Agent::Session` rather than `RubyLLM::Conductor::Session`
+- The persistence adapter saves/loads session messages, metadata, model info
+
+### 9. Test coverage
+- Test Railtie initializers fire in correct order
+- Test service discovery finds installed `ask-*` gems and reads their context
+- Test session factory creates a configured agent session
+- Test AR persistence saves and loads session state
+- Test generators produce correct migration and initializer
+- Test blank configuration normalization
+- Test system prompt generation includes all discovered services with correct formatting
+- Test Rails tool wrappers work
+
+### 10. README
+- Installation (add to Gemfile + generate)
+- Quick start: `Ask::Rails.agent_session.run("message")`
+- Configuration reference (all options with defaults)
+- Adding Rails-specific tools in `app/tools/`
+- How service gems are discovered and injected into system prompt
+- Persistence and background jobs
+- Migration guide from `solid_agents`
+
+### 11. Production hardening
+- Railtie initializers should handle missing tables gracefully (don't crash on fresh `db:create`)
+- AR persistence should handle concurrent session saves
+- Service discovery should handle missing context modules gracefully
+- Session factory should work in both web requests and background jobs
+- Configuration validation: empty model names → nil, invalid max_turns → clamp
+
+## What "Done" Means
+
+- Railtie loads in Rails app without errors
+- `Ask::Rails.agent_session` creates a working agent with all configured tools
+- Service discovery reads installed `ask-*` gems and generates a system prompt
+- AR persistence saves and loads agent sessions
+- `rails generate ask_rails:install` works and produces correct files
+- Blank config values normalize to `nil`
+- Rails tools (`ReadFile`, `RunCommand`, `SearchCodebase`, `ReadRoute`) work
+- >90% test coverage with a Rails dummy app
+- README full documentation
+- Works in both web requests and ActiveJob background jobs
