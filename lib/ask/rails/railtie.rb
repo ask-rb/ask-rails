@@ -8,7 +8,7 @@ module Ask
       end
 
       generators do
-        require_relative "../generators/ask/rails/install/install_generator"
+        require_relative "../../generators/ask/rails/install/install_generator"
       end
 
       initializer "ask_rails.configure" do |app|
