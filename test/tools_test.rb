@@ -3,27 +3,53 @@
 require_relative "test_helper"
 
 class ToolsTest < Minitest::Test
+  def setup
+    @read_file = Ask::Rails::Tools::ReadFile.new
+    @run_command = Ask::Rails::Tools::RunCommand.new
+    @search_codebase = Ask::Rails::Tools::SearchCodebase.new
+    @read_routes = Ask::Rails::Tools::ReadRoutes.new
+    @query_database = Ask::Rails::Tools::QueryDatabase.new
+    @read_model = Ask::Rails::Tools::ReadModel.new
+    @read_log = Ask::Rails::Tools::ReadLog.new
+  end
+
   def test_read_file_defines_correct_params
-    tool = Ask::Rails::Tools::ReadFile.new
-    assert_equal "read_file", tool.name
-    assert tool.parameters.key?(:path)
+    assert_equal "read_file", @read_file.name
+    assert @read_file.parameters.key?(:path)
   end
 
   def test_run_command_defines_correct_params
-    tool = Ask::Rails::Tools::RunCommand.new
-    assert_equal "run_command", tool.name
-    assert tool.parameters.key?(:command)
+    assert_equal "run_command", @run_command.name
+    assert @run_command.parameters.key?(:command)
   end
 
   def test_search_codebase_defines_correct_params
-    tool = Ask::Rails::Tools::SearchCodebase.new
-    assert_equal "search_codebase", tool.name
-    assert tool.parameters.key?(:pattern)
+    assert_equal "search_codebase", @search_codebase.name
+    assert @search_codebase.parameters.key?(:pattern)
   end
 
   def test_read_routes_has_no_required_params
-    tool = Ask::Rails::Tools::ReadRoutes.new
-    assert_equal "read_routes", tool.name
+    assert_equal "read_routes", @read_routes.name
+  end
+
+  def test_query_database_defines_correct_params
+    assert_equal "query_database", @query_database.name
+    assert @query_database.parameters.key?(:sql)
+    assert @query_database.parameters.key?(:limit)
+  end
+
+  def test_read_model_defines_correct_params
+    assert_equal "read_model", @read_model.name
+    assert @read_model.parameters.key?(:name)
+    assert @read_model.parameters.key?(:detail)
+  end
+
+  def test_read_log_defines_correct_params
+    assert_equal "read_log", @read_log.name
+    assert @read_log.parameters.key?(:lines)
+    assert @read_log.parameters.key?(:level)
+    assert @read_log.parameters.key?(:search)
+    assert @read_log.parameters.key?(:file)
   end
 
   def test_tool_inherits_from_ask_tool
@@ -31,5 +57,165 @@ class ToolsTest < Minitest::Test
     assert Ask::Rails::Tools::RunCommand.ancestors.include?(Ask::Tool)
     assert Ask::Rails::Tools::SearchCodebase.ancestors.include?(Ask::Tool)
     assert Ask::Rails::Tools::ReadRoutes.ancestors.include?(Ask::Tool)
+    assert Ask::Rails::Tools::QueryDatabase.ancestors.include?(Ask::Tool)
+    assert Ask::Rails::Tools::ReadModel.ancestors.include?(Ask::Tool)
+    assert Ask::Rails::Tools::ReadLog.ancestors.include?(Ask::Tool)
+  end
+
+  # --- QueryDatabase tests ---
+
+  def test_query_database_rejects_insert
+    result = @query_database.call(sql: "INSERT INTO users (name) VALUES ('test')")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+  end
+
+  def test_query_database_rejects_write_statements
+    %w[UPDATE DELETE DROP TRUNCATE ALTER CREATE GRANT REVOKE].each do |stmt|
+      result = @query_database.call(sql: "#{stmt} TABLE users")
+      assert result.error?, "#{stmt} should be rejected"
+    end
+  end
+
+  def test_query_database_rejects_non_select_in_production
+    Rails.env = "production"
+    result = @query_database.call(sql: "WITH x AS (SELECT 1) SELECT * FROM x")
+    assert result.error?
+  ensure
+    Rails.env = "test"
+  end
+
+  def test_query_database_select_with_live_db
+    with_test_db do |db|
+      # Ensure Rails is set up for the tool
+      result = @query_database.call(sql: "SELECT * FROM test_items ORDER BY value ASC")
+      assert_instance_of Hash, result, "Expected Hash but got #{result.class}"
+      assert_equal %w[id name value], result[:columns]
+      assert_equal 5, result[:count]
+      assert_equal "item_0", result[:rows][0]["name"]
+      assert_equal 40, result[:rows][-1]["value"]
+    end
+  end
+
+  def test_query_database_auto_appends_limit
+    with_test_db do |db|
+      result = @query_database.call(sql: "SELECT * FROM test_items", limit: 2)
+      assert_instance_of Hash, result
+      assert_equal 2, result[:count]
+      refute result[:truncated], "Should not be truncated with limit >= count"
+    end
+  end
+
+  def test_query_database_empty_result
+    with_test_db do |db|
+      result = @query_database.call(sql: "SELECT * FROM test_items WHERE value < 0")
+      assert_instance_of Hash, result
+      assert_equal 0, result[:count]
+      assert_equal [], result[:rows]
+    end
+  end
+
+  def test_query_database_malformed_sql
+    with_test_db do |db|
+      result = @query_database.call(sql: "SELEC * FRM test_items")
+      assert_instance_of Ask::Result, result
+      assert result.error?
+    end
+  end
+
+  # --- ReadModel tests ---
+
+  def test_read_model_not_found
+    result = @read_model.call(name: "NonExistentModel12345")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+  end
+
+  def test_read_model_not_active_record
+    result = @read_model.call(name: "String")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+  end
+
+  # --- ReadLog tests ---
+
+  def test_read_log_file_not_found
+    result = @read_log.call(file: "/nonexistent_dir_42/log.log")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+  end
+
+  def test_read_log_returns_recent_lines
+    with_temp_log("line 1\nline 2\nline 3\nERROR: something broke\nline 5\n") do |path|
+      result = @read_log.call(file: path, lines: 3)
+      assert_instance_of Hash, result
+      assert_equal 3, result[:lines].size
+      assert result[:lines].any? { |l| l.include?("ERROR") }
+    end
+  end
+
+  def test_read_log_respects_max_lines
+    with_temp_log((1..600).map { |i| "line #{i}" }.join("\n")) do |path|
+      result = @read_log.call(file: path, lines: 600)
+      assert result[:lines].size <= 500
+    end
+  end
+
+  def test_read_log_filters_by_level
+    with_temp_log("[INFO] Started\n[ERROR] Failed\n[WARN] Retrying\n[INFO] Done") do |path|
+      result = @read_log.call(file: path, lines: 10, level: "ERROR")
+      assert result[:lines].all? { |l| l.include?("[ERROR]") }
+      assert_equal 1, result[:matched_lines]
+    end
+  end
+
+  def test_read_log_filters_by_search
+    with_temp_log("GET /users\nPOST /login\nGET /posts\nDELETE /users/1") do |path|
+      result = @read_log.call(file: path, lines: 10, search: "GET")
+      assert result[:lines].all? { |l| l.include?("GET") }
+      assert_equal 2, result[:matched_lines]
+    end
+  end
+
+  def test_read_log_handles_empty_file
+    with_temp_log("") do |path|
+      result = @read_log.call(file: path, lines: 10)
+      assert_instance_of Hash, result
+      assert_equal 0, result[:lines].size
+    end
+  end
+
+  def test_read_log_reports_total_lines
+    with_temp_log("a\nb\nc\n") do |path|
+      result = @read_log.call(file: path, lines: 10)
+      assert_equal 3, result[:total_lines]
+    end
+  end
+
+  private
+
+  def with_test_db
+    require "active_record"
+    Dir.mktmpdir do |dir|
+      db_path = File.join(dir, "test.db")
+      ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: db_path)
+      ActiveRecord::Base.connection.create_table(:test_items, force: true) do |t|
+        t.string :name
+        t.integer :value
+      end
+      (0..4).each do |i|
+        ActiveRecord::Base.connection.insert("INSERT INTO test_items (name, value) VALUES ('item_#{i}', #{i * 10})")
+      end
+      yield ActiveRecord::Base.connection
+      ActiveRecord::Base.connection.disconnect!
+    end
+  end
+
+  def with_temp_log(content)
+    Dir.mktmpdir do |dir|
+      log_path = Pathname.new(dir).join("test.log")
+      log_path.write(content)
+      yield log_path.to_s
+    end
   end
 end

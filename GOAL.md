@@ -9,235 +9,241 @@ The only gem a Rails app needs to join the ask-rb ecosystem. Provides:
 - **Service gem discovery** — auto-discovers installed `ask-*` gems, reads their context modules, injects them into the system prompt
 - **Generators** — `rails generate ask_rails:install`
 - **Configuration** — `config.ask_rails.default_model`, `max_turns`, etc.
-
-Transformed from `solid_agents` at `github.com/ask-rb/solid_agents`. Strip the workflow engine, UI, jobs, schedules, error subscriber. Keep and polish the Railtie, generators, persistence, configuration patterns.
+- **Rails-aware tools** — `ReadFile`, `RunCommand`, `SearchCodebase`, `ReadRoute`,
+  **`QueryDatabase`**, **`ReadModel`**, **`ReadLog`**
 
 ## Dependencies
 
-- **Runtime:**
-  - `rails >= 7.1` (core dependency — this is a Rails integration gem)
-  - `ask-tools` (for `Ask::Tool` base class, tool discovery)
-  - `ask-tools-shell` (for execution tools)
-  - `ask-agent` (for `Ask::Agent::Session`)
-  - `ask-auth` (for credential resolution config)
-  - `ruby_llm` (**temporary** — until provider gems replace it)
-- **Build/test:** minitest, mocha, rake, sqlite3 (for test dummy app)
-- **This gem MUST wait until `ask-agent`, `ask-tools`, `ask-tools-shell`, and `ask-auth` are all built, tested, and released.**
+- **Runtime:** `rails >= 7.1`, `ask-core`, `ask-tools`, `ask-tools-shell`, `ask-agent`, `ask-auth`
+- **Build/test:** minitest, mocha, rake, sqlite3
 
-## Implementation Steps
+## Current State
 
-### 1. Define the gem scaffold
-- `lib/ask-rails.rb` — entry point
-- `lib/ask/rails.rb` — main module with `configure`, configuration accessors
-- `lib/ask/rails/railtie.rb` — Railtie class (not Engine)
-- `lib/ask/rails/version.rb`
-- `lib/ask/rails/persistence.rb` — ActiveRecord session persistence (lifted from conductor)
-- `lib/ask/rails/configuration.rb` — default configuration, blank normalization
-- `lib/ask/rails/session_factory.rb` — `Ask::Rails.agent_session`
-- `lib/ask/rails/service_discovery.rb` — auto-discovers installed `ask-*` gems
-- `lib/ask/rails/tool.rb` — `Ask::Rails::Tool < Ask::Tool` base for Rails-specific tools
-- `lib/generators/ask/rails/install/install_generator.rb`
-- `app/views/layouts/` — not needed (no Engine, no UI)
-- Write `ask-rails.gemspec`
+The gem is at v0.1.0 on RubyGems with the following already built:
+- Railtie ✅
+- AR persistence ✅
+- Session factory ✅
+- Service gem discovery ✅
+- Generators ✅
+- Configuration ✅
+- `ReadFile` tool ✅
+- `RunCommand` tool ✅
+- `SearchCodebase` tool ✅
+- `ReadRoute` tool ✅
 
-### 2. Build Railtie (`lib/ask/rails/railtie.rb`)
-- Inherit from `Rails::Railtie` (not `Engine`)
-- `rake_tasks` block to load rake tasks
-- `generators` block — load install generator
-- `initializer "ask_rails.configure_llm"` — configure RubyLLM from app config (env vars)
-- `initializer "ask_rails.discover_tools", after: :eager_load_most` — discover tools in `app/tools/`
-- `initializer "ask_rails.discover_services", after: :eager_load_most` — discover `ask-*` service gems
+## What Needs to Be Built — v0.2.0
 
-### 3. Build configuration (`lib/ask/rails/configuration.rb`)
-- `mattr_accessor` style config on the `Ask::Rails` module
-- Options: `default_model`, `max_turns`, `system_prompt`, `tool_concurrency`, `persistence_adapter`
-- Blank normalization: empty strings → `nil` (adopted from ruby_llm 1.16)
+Three new Rails-aware tools that give agents deep access to a running Rails app.
+Each tool lives in `lib/ask/rails/tools/` and inherits from `Ask::Rails::Tool < Ask::Tool`.
 
-### 4. Build service discovery (`lib/ask/rails/service_discovery.rb`)
-- On boot, scan `Gem.loaded_specs` for gems matching `ask-*` (excluding `ask-tools`, `ask-agent`, `ask-rails`, `ask-auth`)
-- For each, `require "#{name.tr('-', '/')}/context"` and read the context module
-- Build a system prompt section from all discovered service contexts:
-  - `DESCRIPTION`, `QUICK_START`, `DOCS_URL`, `AUTH_HOW` from each service
-  - `Error::MAP` from each service's error guide
-- Inject the generated prompt into the session's system prompt
+---
 
-### 5. Build session factory (`lib/ask/rails/session_factory.rb`)
-- `Ask::Rails.agent_session` creates an `Ask::Agent::Session` pre-configured with:
-  - Default model from config
-  - Tools from `Ask::Tools::Shell.all`
-  - Auto-generated system prompt from discovered services
-  - AR persistence if configured
-  - Rails executor wrapping for background job safety
+### Tool 1: `Ask::Rails::QueryDatabase`
 
-### 6. Build Rails-specific tools
-- `Ask::Rails::Tool < Ask::Tool` — base class with `Rails.root` access
-- `Ask::Rails::ReadFile` — reads files, `Rails.root`-relative paths
-- `Ask::Rails::RunCommand` — runs commands in `Rails.root` context
-- `Ask::Rails::SearchCodebase` — greps the Rails app directory
-- `Ask::Rails::ReadRoute` — reads `config/routes.rb`
-- These are convenience wrappers that save the agent from writing `Rails.root.join(...)` every time
+**Why ReadFile isn't enough:** The agent could read `config/database.yml` and use the Code tool to run SQL, but it would need to establish a connection, handle the connection pool, format results, and worry about write queries in production. This tool does all that correctly in one call.
 
-### 7. Build generators (`lib/generators/ask/rails/install/`)
-- `rails generate ask_rails:install`:
-  - Creates migration for session persistence table
-  - Creates initializer with default configuration
-  - Creates `app/tools/` directory for app-specific tools
-- Migration template creates `ask_sessions` table with:
-  - `id`, `session_id` (UUID), `model`, `messages` (jsonb/text), `metadata` (jsonb)
-  - `created_at`, `updated_at`
+**Implementation** (`lib/ask/rails/tools/query_database.rb`):
 
-### 8. Port AR persistence from conductor
-- Move `conductor/persistence/active_record.rb` to `ask/rails/persistence.rb`
-- Adapt to work with `Ask::Agent::Session` rather than `RubyLLM::Conductor::Session`
-- The persistence adapter saves/loads session messages, metadata, model info
+```ruby
+class Ask::Rails::QueryDatabase < Ask::Rails::Tool
+  description "Run a read-only SQL query against the application database. " \
+               "Returns columns and rows. Only SELECT is allowed in production."
 
-### 9. Test coverage
-- Test Railtie initializers fire in correct order
-- Test service discovery finds installed `ask-*` gems and reads their context
-- Test session factory creates a configured agent session
-- Test AR persistence saves and loads session state
-- Test generators produce correct migration and initializer
-- Test blank configuration normalization
-- Test system prompt generation includes all discovered services with correct formatting
-- Test Rails tool wrappers work
+  param :sql,    type: :string, desc: "SQL query (SELECT only in production)", required: true
+  param :limit,  type: :integer, desc: "Max rows to return", required: false
+end
+```
 
-### 10. README
-- Installation (add to Gemfile + generate)
-- Quick start: `Ask::Rails.agent_session.run("message")`
-- Configuration reference (all options with defaults)
-- Adding Rails-specific tools in `app/tools/`
-- How service gems are discovered and injected into system prompt
-- Persistence and background jobs
-- Migration guide from `solid_agents`
+**Key behaviors:**
+- In production, reject any query that doesn't match `/\A\s*SELECT\b/i`
+- Use `ActiveRecord::Base.connection_pool.with_connection` for thread safety
+- Auto-append `LIMIT` if not present (default 50)
+- Return `{ columns: [...], rows: [...], count: N }`
+- Rescue `ActiveRecord::StatementInvalid` with the SQL error message
+- Never run `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER` in any environment
 
-### 11. Production hardening
-- Railtie initializers should handle missing tables gracefully (don't crash on fresh `db:create`)
-- AR persistence should handle concurrent session saves
-- Service discovery should handle missing context modules gracefully
-- Session factory should work in both web requests and background jobs
-- Configuration validation: empty model names → nil, invalid max_turns → clamp
+**Edge cases to handle:**
+- Connection pool timeout (wait, retry once, then fail with clear message)
+- Queries returning 10,000+ rows (truncate to limit)
+- Binary/bytea columns (exclude from results or Base64 encode)
+- ActiveRecord not connected (app may be in `rails console` or `db:drop` state)
+- `PG::Error` vs `Mysql2::Error` vs `SQLite3::Exception` — ruby_llm-schema normalizes these away
 
+---
 
-## Documentation
+### Tool 2: `Ask::Rails::ReadModel`
 
-### Documentation
-- **Update ask-docs** after releasing v0.1.0 — the docs site at github.com/ask-rb/ask-docs must reflect this gems API, usage, and position in the ecosystem.
-- The ask-docs repo has a Jekyll site with sections for each gem under core/, providers/, tools/, agent/.
-- Add or update the relevant page(s) and submit a PR to ask-docs.
-- This is not optional — ask-docs is the public face of the ecosystem.
+**Why ReadFile isn't enough:** Reading `app/models/user.rb` gives raw Ruby. `ReadModel` introspects the class via ActiveRecord's reflection API and returns structured data the agent can act on immediately.
 
-## Improving Parent Gems During Development
+**Implementation** (`lib/ask/rails/tools/read_model.rb`):
 
-### Improving Parent Gems During Development
+```ruby
+class Ask::Rails::ReadModel < Ask::Rails::Tool
+  description "Inspect an ActiveRecord model — attributes, associations, " \
+               "validations, scopes, indexes, and callbacks."
 
-If during development you discover something in a parent gem (a dependency of this gem)
-that needs to be fixed or improved:
+  param :name,   type: :string, desc: "Model class name (e.g. 'User', 'Blog::Post')", required: true
+  param :detail, type: :string, desc: "Which details: 'all' (default), 'columns', 'associations', 'validations'", required: false
+end
+```
 
-1. Make the change in the parent gem's repository at `/Users/kaka/Code/ask-rb/GEMNAME/`
-2. Ensure existing tests in the parent gem still pass: `cd ../PARENT && bundle exec rake test`
-3. Ensure tests in THIS gem still pass: `bundle exec rake test`
-4. Ensure the parent gem still builds: `gem build *.gemspec`
-5. Commit the parent gem change, bump its patch version, and push:
-   `cd ../PARENT && git commit -m "fix: ..." && git push`
-6. Update this gem's Gemfile to reference the updated parent gem
-7. Continue with this gem's implementation using the fixed parent
+**Return format:**
+```json
+{
+  "name": "User",
+  "table_name": "users",
+  "columns": [
+    { "name": "id", "type": "integer", "null": false, "default": null, "primary_key": true },
+    { "name": "email", "type": "string", "null": false, "default": null },
+    { "name": "admin", "type": "boolean", "null": true, "default": false }
+  ],
+  "associations": {
+    "has_many": [{ "name": "posts", "class_name": "Post", "foreign_key": "user_id" }],
+    "belongs_to": [{ "name": "account", "class_name": "Account", "foreign_key": "account_id" }]
+  },
+  "validations": [
+    { "attribute": "email", "type": "presence" },
+    { "attribute": "email", "type": "uniqueness", "options": { "case_sensitive": false } }
+  ],
+  "scopes": [{ "name": "active", "lambda": "-> { where(active: true) }" }]
+}
+```
 
-Do NOT break parent functionality. Do NOT change parent APIs without testing
-both gems. Parent gems have their own consumers — treat them with care.
+**Key behaviors:**
+- Use `model.constantize` to resolve the class
+- Use `model.columns_hash`, `model.reflect_on_all_associations`, `model.validators` etc.
+- Handle: model not found, STI models, namespaced models (`Blog::Post`)
+- If `detail: "columns"` is given, only return column info (useful for large models)
 
+**Edge cases:**
+- Model class doesn't exist -> clear error with similar model names suggested
+- Model has 50+ columns -> truncate or paginate
+- Abstract classes (`self.abstract_class = true`) -> note in response
+- `attr_accessor` vs database columns -> only show DB columns
+- Single Table Inheritance — show `inheritance_column` and subclasses
 
-## What Done Means for v0.1.0
+---
 
-The gem reaches v0.1.0 when:
-- All implementation steps above are complete and tested
-- The gem is released on RubyGems
-- A real consumer can install it with gem install or Bundler
-- A consumer script can require it and use its full public API
-- The README provides enough information for someone unfamiliar to get started in 5 minutes
-- The CHANGELOG documents what v0.1.0 delivers
+### Tool 3: `Ask::Rails::ReadLog`
 
+**Why ReadFile isn't enough:** Production logs are huge and rotate. `ReadFile` hits a 2000-line limit on a file with 50,000 lines. `ReadLog` can filter by level, time range, and search term server-side.
 
-## v0.1.0 Completion Checklist
+**Implementation** (`lib/ask/rails/tools/read_log.rb`):
 
-A gem is NOT done until every item in this checklist passes. No shortcuts. If you cannot check every box, the gem is NOT finished.
+```ruby
+class Ask::Rails::ReadLog < Ask::Rails::Tool
+  description "Read application log files with filtering. Supports Rails default " \
+               "logger and log rotation."
 
-### Code & Tests
-- [ ] Every public method has unit tests (happy path + edge cases + error cases)
-- [ ] Tests cover: normal operation, missing inputs, invalid inputs, network errors, auth failures
-- [ ] Integration tests with real recorded API calls using VCR cassettes (for any gem that calls external APIs)
-- [ ] All tests pass: `bundle exec rake test`
-- [ ] Test coverage >= 90% (measure with simplecov)
-- [ ] Thread-safety verified for any shared state (registries, config, client construction)
-- [ ] No warnings on load
-- [ ] No dependency conflicts
+  param :lines,      type: :integer, desc: "Number of recent lines (default 50, max 500)", required: false
+  param :level,      type: :string, desc: "Filter by level: 'ERROR', 'WARN', 'INFO', 'DEBUG'", required: false
+  param :search,     type: :string, desc: "Search term (plain text or regex)", required: false
+  param :file,       type: :string, desc: "Log file name (default: log/production.log or log/development.log)", required: false
+end
+```
 
-### Documentation
-- [ ] README is complete: installation, quick start, configuration, examples, development
-- [ ] Every public method documented (yardoc or inline comments)
-- [ ] CHANGELOG.md exists with v0.1.0 entry
+**Key behaviors:**
+- Determine Rails.env and pick the right log file automatically
+- Use `Rails.root.join("log/#{env}.log")` as default
+- Handle log rotation — read the current file plus `.1` `.2` etc. rotated archives
+- Read from the end of the file (reverse seek) for recent lines
+- Filter by level: `ERROR`, `WARN`, `INFO`, `DEBUG` (match against logfmt pattern)
+- Filter by search term (case-insensitive match)
+- Max 500 lines returned (configurable limit in tool definition)
 
-### Release
-- [ ] Gem builds without errors: `gem build *.gemspec`
-- [ ] Gem is released on RubyGems.org: `gem push *.gem`
-- [ ] A fresh install works: `gem install GEMNAME` in a clean directory
-- [ ] A consumer script can require and use the full public API
+**Edge cases:**
+- Log file doesn't exist -> return empty with explanation
+- Log file is huge (1GB+) -> read from the end only, warn about truncated output
+- Log rotation with gzip (.gz) -> handle with `zlib`
+- Custom logger (Lograge, Semantic Logger, etc.) -> note that parsing works for default Rails logger, custom formats may reduce filter accuracy
+- No read permission -> clear error, suggest checking file permissions
+- JSON logger (rails 8+) -> parse JSON lines and return structured format
 
-### Production Hardening
-- [ ] Error messages are helpful and actionable (tell the user what went wrong AND what to do)
-- [ ] Network timeouts handled (Timeout::Error, Errno::ECONNREFUSED, etc.)
-- [ ] Retry logic for transient failures (rate limits, 429, 503)
-- [ ] Sensible defaults for all configuration options
-- [ ] Input validation rejects invalid parameters with clear messages
-- [ ] Logging does not leak sensitive data (tokens, keys)
+---
 
-### CI/CD
-- [ ] GitHub Actions workflow runs tests on push and PR (`.github/workflows/ci.yml`)
-- [ ] CI passes on Ruby 3.2, 3.3, 3.4
+## Implementation Steps (for all 3 tools)
 
-### Post-Release
-- [ ] ask-docs repository updated with this gem documentation
-- [ ] Version tag exists: `git tag v0.1.0 && git push --tags`
+1. Create each tool file in `lib/ask/rails/tools/`
+2. Require them in the entry point so they're auto-discovered by the Railtie
+3. Write tests for each tool (see Testing below)
+4. Update `lib/ask-rails.rb` or `lib/ask/rails.rb` to require the new tool files
+5. Update the completion checklist below
 
-## Development Workflow
+## Testing
 
-### Git conventions
-- The default branch is **master**. All work should be based on master unless a specific branch is requested.
+### QueryDatabase tests
+- Test with SQLite3 in-memory database (the test dummy app should have this)
+- Create a test table, insert data, query it
+- Test: simple SELECT, SELECT with LIMIT, SELECT without LIMIT (should be added)
+- Test: INSERT rejected (raise clear error, even in test)
+- Test: malformed SQL returns ActiveRecord::StatementInvalid error
+- Test: connection pool timeout (mock to verify error message)
+- Test: empty results, single row, multiple rows
+- Test: production guard — verify non-SELECT queries are rejected
 
-- Follow the git-workflow skill for branch naming, commit messages, and PR structure.
-- Use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
-- One logical change per commit. No "fixup" or "wip" commits on master.
-- Commit messages must be one direct sentence describing the change.
+### ReadModel tests
+- Create test models within the dummy app
+- Test: column listing (name, type, null, default, primary_key)
+- Test: associations (has_many, belongs_to, has_one, has_and_belongs_to_many)
+- Test: validators (presence, uniqueness, numericality, length, custom)
+- Test: scopes
+- Test: model not found (wrong name)
+- Test: namespaced model (e.g., `Admin::User`)
+- Test: STI model
+- Test: detail: "columns" returns only column info
+- Test: abstract class
 
-### Reference projects
-Study existing implementations for patterns and conventions:
+### ReadLog tests
+- Create a temporary log file with known content
+- Test: reads recent N lines from the end
+- Test: filters by level (ERROR, WARN, INFO)
+- Test: filters by search term
+- Test: file not found returns empty
+- Test: handles rotated log files (`.log.1`, `.log.2.gz`)
+- Test: respects max lines limit
+- Test: JSON logger format (Rails 8+)
 
-- **ask-tools-shell** — extract from `ruby_llm-conductor/lib/ruby_llm/conductor/tools/`
-- **ask-agent** — port from `ruby_llm-conductor/` (session, loop, tool_executor, compactor, etc.)
-- **ask-rails** — transform from `solid_agents/` (railtie, generators, persistence)
-- **ask-openai, ask-anthropic** — study `ruby_llm/lib/ruby_llm/providers/` for wire formats and streaming patterns
-- **ask-openai** — also study `llm-proxy/lib/llm_proxy/protocols/` for OpenAI protocol conversion
-- **General patterns** — study `pi/packages/ai/src/providers/` for lazy loading, registration, and protocol families
-- **Test patterns** — study `ruby_llm/spec/` for VCR cassette structure and integration testing patterns
-- **ask-github** — reference implementation for service context gems; follow its three-file pattern
-### Reference Repositories (Local)
-All ask-rb gem repos are available locally at /Users/kaka/Code/ask-rb/ for reference.
-Do not clone from GitHub — use the local directories:
-- Source code: /Users/kaka/Code/ask-rb/GEMNAME/lib/
-- Tests: /Users/kaka/Code/ask-rb/GEMNAME/test/
-- Goal: /Users/kaka/Code/ask-rb/GEMNAME/GOAL.md
-- Gemspec: /Users/kaka/Code/ask-rb/GEMNAME/GEMNAME.gemspec
+## Version & Release
 
-Other reference projects in the same workspace:
-- /Users/kaka/Code/ask-rb/ruby_llm/ — RubyLLM gem (providers, models, streaming)
-- /Users/kaka/Code/ask-rb/ruby_llm-conductor/ — Original conductor (agent loop, tools)
-- /Users/kaka/Code/ask-rb/llm-proxy/ — Protocol normalization patterns
-- /Users/kaka/Code/ask-rb/pi/ — Pi agent (TypeScript, provider architecture)
-- /Users/kaka/Code/ask-rb/solid_agents/ — Original solid_agents (Rails engine)
-- /Users/kaka/Code/ask-rb/composio/ — Composio SDK (MCP tool execution examples)
-- /Users/kaka/Code/ask-rb/ask-docs/ — Documentation site (update after release)
+1. Bump version to `0.2.0` in `lib/ask/rails/version.rb`
+2. Update `CHANGELOG.md`:
+   ```markdown
+   ## 0.2.0 (YYYY-MM-DD)
 
-### Testing
-- Use Minitest (not RSpec) — consistent with the ask-rb ecosystem.
-- Unit tests for every public method (normal path + edge cases + error cases).
-- Integration tests with VCR cassettes for any gem that calls external APIs.
-- Run the full suite before every commit: `bundle exec rake test`.
+   ### Added
+   - Ask::Rails::QueryDatabase — read-only SQL queries via ActiveRecord
+   - Ask::Rails::ReadModel — structured model introspection (columns, associations, validations)
+   - Ask::Rails::ReadLog — filtered log reading with level and search filters
+   ```
+3. Commit and push: `git commit -m "feat: add QueryDatabase, ReadModel, ReadLog tools"`
+4. Build: `gem build ask-rails.gemspec`
+5. Release: `gem push ask-rails-0.2.0.gem`
+6. Tag: `git tag v0.2.0 && git push --tags`
+7. Update ask-docs with the new tools
+
+## Completion Checklist
+
+- [ ] QueryDatabase tool implemented and tested
+  - [ ] SELECT works, INSERT/UPDATE/DELETE rejected
+  - [ ] Production guard enforced
+  - [ ] Limit auto-applied
+  - [ ] Connection pool errors handled
+- [ ] ReadModel tool implemented and tested
+  - [ ] Columns listed with full metadata
+  - [ ] Associations shown
+  - [ ] Validations shown
+  - [ ] Scopes shown
+  - [ ] STI/namespaced handled
+  - [ ] Model not found handled
+- [ ] ReadLog tool implemented and tested
+  - [ ] Reads from end of file
+  - [ ] Level filtering works
+  - [ ] Search filtering works
+  - [ ] Rotation files handled
+  - [ ] Missing file handled
+- [ ] All tests pass with >90% coverage
+- [ ] Version bumped to 0.2.0
+- [ ] CHANGELOG updated
+- [ ] Released to RubyGems
+- [ ] Tagged with v0.2.0
+- [ ] ask-docs updated with new tool documentation
