@@ -1,3 +1,10 @@
+## 0.2.4 (2026-06-21)
+
+### Added
+- `Ask::Rails::Engine` — Rails engine for autoloading and generator discovery
+- Skills directory with methodology skills (rails.db_debug, rails.deploy_pipeline, rails.route_trouble)
+- Gemspec metadata for Rubygems discovery
+
 # Changelog
 
 ## 0.2.0 (2026-06-10)

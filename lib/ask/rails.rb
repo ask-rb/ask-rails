@@ -65,6 +65,7 @@ module Ask
 end
 
 require_relative "rails/version"
+require_relative "rails/engine"
 require_relative "rails/configuration"
 require_relative "rails/railtie"
 require_relative "rails/persistence"
