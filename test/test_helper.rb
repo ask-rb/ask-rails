@@ -1,8 +1,17 @@
+if ENV["COVERAGE"]
+  require "simplecov"
+  SimpleCov.start do
+    add_filter "/test/"
+    add_filter "/vendor/"
+    track_files "lib/**/*.rb"
+  end
+end
+
 # frozen_string_literal: true
 
 # Load paths for local ask-rb gems (prefer local over installed gems)
 ask_rb_root = File.expand_path("../..", __dir__)
-%w[ask-core ask-tools ask-tools-shell ask-schema ask-auth ask-llm-providers ask-agent ask-rails].each do |gem|
+%w[ask-core ask-tools ask-tools-shell ask-schema ask-auth ask-llm-providers ask-agent ask-rails ask-sandbox-providers].each do |gem|
   lib = File.join(ask_rb_root, gem, "lib")
   $LOAD_PATH.unshift lib if File.directory?(lib)
 end

@@ -1,3 +1,7 @@
+## [0.2.5] - 2026-06-25
+
+### Changed
+- Expanded tests: Persistence(7t), Configuration(7t), ServiceDiscovery(5t), Engine(7t), InstallGenerator(7t), Tools(24t with live DB). Infrastructure: rubocop, overcommit, CI matrix, Appraisals, gemspec.
 ## 0.2.4 (2026-06-21)
 
 ### Added

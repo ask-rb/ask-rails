@@ -9,7 +9,6 @@ class ConfigurationTest < Minitest::Test
     assert_equal 25, config.max_turns
     assert_nil config.system_prompt
     assert_equal 5, config.tool_concurrency
-    assert_nil config.persistence_adapter
     assert_equal [], config.tools
   end
 
@@ -25,9 +24,27 @@ class ConfigurationTest < Minitest::Test
     assert_equal [:tool1, :tool2], config.tools
   end
 
-  def test_max_turns_clamping
+  def test_max_turns_settable
     config = Ask::Rails::Configuration.new
     config.max_turns = 100
     assert_equal 100, config.max_turns
+  end
+
+  def test_system_prompt_settable
+    config = Ask::Rails::Configuration.new
+    config.system_prompt = "You are a helpful assistant"
+    assert_equal "You are a helpful assistant", config.system_prompt
+  end
+
+  def test_persistence_adapter_settable
+    config = Ask::Rails::Configuration.new
+    config.persistence_adapter = :memory
+    assert_equal :memory, config.persistence_adapter
+  end
+
+  def test_tool_concurrency_settable
+    config = Ask::Rails::Configuration.new
+    config.tool_concurrency = 10
+    assert_equal 10, config.tool_concurrency
   end
 end
