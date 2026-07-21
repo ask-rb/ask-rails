@@ -11,7 +11,7 @@ end
 
 # Load paths for local ask-rb gems (prefer local over installed gems)
 ask_rb_root = File.expand_path("../..", __dir__)
-%w[ask-core ask-tools ask-tools-shell ask-schema ask-auth ask-llm-providers ask-agent ask-rails ask-sandbox-providers].each do |gem|
+%w[ask-core ask-tools ask-tools-shell ask-schema ask-skills ask-auth ask-instrumentation ask-llm-providers ask-agent ask-rails ask-sandbox-providers].each do |gem|
   lib = File.join(ask_rb_root, gem, "lib")
   $LOAD_PATH.unshift lib if File.directory?(lib)
 end
@@ -19,15 +19,14 @@ end
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 
 # Load required gems before activating bundler's gem paths
+require "rails"
 require "ask"
 require "ask-schema"
 require "ask/tools/tool"
 require "ask/tools/shell"
 require "ask/result"
 
-require "ask/rails/version"
-require "ask/rails/configuration"
-require "ask/rails/persistence"
+require "ask/rails"
 require "ask/rails/tool"
 require "ask/rails/tools/read_file"
 require "ask/rails/tools/run_command"

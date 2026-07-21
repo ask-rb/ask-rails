@@ -1,3 +1,31 @@
+## [0.3.0] — 2026-07-21
+
+### Added
+
+- **Admin chat UI** — Mount `Ask::Rails::Engine` at `/ask` and get a working chat interface with SSE streaming. No generator needed — just mount and go.
+
+  ```
+  GET  /ask                    → Chat UI
+  POST /ask/sessions           → Create new session
+  POST /ask/sessions/:id/messages → Send message (SSE streamed)
+  GET  /ask/sessions/:id/messages → Message history
+  GET  /ask/sessions/:id/stream  → SSE stream for existing session
+  ```
+
+- **`Ask::Rails::ChatController`** — Full controller with actions: `index`, `create`, `message` (SSE streaming), `stream`, `history`, `destroy`. Supports real-time streaming via `Enumerator` + `text/event-stream`.
+
+- **Chat layout and view** — A dark-themed admin chat interface shipped in the gem (not generated). Includes sidebar with session list, message history, SSE streaming, and keyboard navigation.
+
+- **`Ask::Rails::Auth`** — Configurable authentication hook. Set `Ask::Rails::Auth.check = -> { ... }` to protect the chat behind your existing auth system. Runs in controller context — `current_user`, `redirect_to`, etc. are available.
+
+- **Engine routes** — Routes defined in `config/routes.rb` with proper `Ask::Rails::Engine.routes.draw` isolation.
+
+### Changed
+
+- **README** — Rewritten with clear positioning: ask-rails is for internal admin agents. ask-agent is for external-facing agents. Includes comparison table, quick start guide, and tool reference.
+- **Engine** — `isolate_namespace Ask::Rails` for proper route isolation.
+- **Gemspec** — Now includes `app/` and `config/` directories for engine views, controllers, and routes.
+
 ## [0.2.5] - 2026-06-25
 
 ### Changed

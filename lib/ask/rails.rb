@@ -67,7 +67,7 @@ end
 require_relative "rails/version"
 require_relative "rails/engine"
 require_relative "rails/configuration"
-require_relative "rails/railtie"
+require_relative "rails/auth"
 require_relative "rails/persistence"
 require_relative "rails/service_discovery"
 require_relative "rails/tool"
@@ -78,3 +78,8 @@ require_relative "rails/tools/read_routes"
 require_relative "rails/tools/query_database"
 require_relative "rails/tools/read_model"
 require_relative "rails/tools/read_log"
+
+# Railtie is loaded only when Rails is fully available
+if defined?(::Rails::Railtie)
+  require_relative "rails/railtie"
+end
