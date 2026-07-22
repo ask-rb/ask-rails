@@ -1,3 +1,15 @@
+## [0.9.0] — 2026-07-23
+
+### Fixed
+
+- **ReadFile, ReadRoutes, SearchCodebase** — Fixed `ArgumentError: unknown keyword: :data` crash on Ruby 4.0. Tools now return plain Hashes on success instead of using the incompatible `Ask::Result.success` API.
+- **SearchCodebase** — Marked `path` param as optional (was incorrectly required). Added shell escaping for grep patterns.
+
+### Added
+
+- **23 new execution tests** — ReadFile (3), SearchCodebase (3), ReadRoutes (2), ReadModel (6), plus 6 integration tests. Each tool now has real execution tests beyond just param checks.
+- **160 total tests** — 0 failures, 0 errors.
+
 ## [0.8.0] — 2026-07-23
 
 ### Added
