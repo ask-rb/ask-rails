@@ -1,3 +1,16 @@
+## [0.5.0] — 2026-07-22
+
+### Added
+
+- **Command Allowlist** — `RunCommand` now checks `allowed_commands` and `denied_commands` before executing. Configure with regex patterns:
+  - `Ask::Rails.configuration.allowed_commands = [/^rails /, /^git status/]`
+  - `Ask::Rails.configuration.denied_commands = [/rm /, /dropdb/]`
+  - `denied_commands` takes precedence over `allowed_commands`
+  - When `allowed_commands` is nil (default), all commands pass through (except those in `denied_commands`)
+  - Blocked commands return `Ask::Result.error` with a descriptive message and are recorded in the audit log
+
+- **`allowed_commands` and `denied_commands` configuration options** — Two new arrays of regex patterns on the `Configuration` object.
+
 ## [0.4.0] — 2026-07-22
 
 ### Added

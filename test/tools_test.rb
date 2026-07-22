@@ -23,6 +23,75 @@ class ToolsTest < Minitest::Test
     assert @run_command.parameters.key?(:command)
   end
 
+  def test_run_command_blocked_by_denied_pattern
+    original_denied = Ask::Rails.configuration.denied_commands
+    Ask::Rails.configuration.denied_commands = [/rm/, /dropdb/]
+
+    result = @run_command.execute(command: "rm -rf /tmp/test")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+    assert_includes result.to_s, "rm"
+  ensure
+    Ask::Rails.configuration.denied_commands = original_denied
+  end
+
+  def test_run_command_allowed_by_allowlist
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    Ask::Rails.configuration.allowed_commands = [/^echo /]
+    Ask::Rails.configuration.denied_commands = nil
+
+    result = @run_command.execute(command: "echo hello")
+    assert result.ok?, "Expected success but got: #{result.to_s}"
+    assert_includes result.output[:output], "hello"
+  ensure
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+  end
+
+  def test_run_command_blocked_when_not_in_allowlist
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    Ask::Rails.configuration.allowed_commands = [/^echo /]
+    Ask::Rails.configuration.denied_commands = nil
+
+    result = @run_command.execute(command: "ls /tmp")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+    assert_includes result.to_s, "not match any allowed"
+  ensure
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+  end
+
+  def test_run_command_deny_takes_precedence_over_allow
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    Ask::Rails.configuration.allowed_commands = [/^echo /]
+    Ask::Rails.configuration.denied_commands = [/hello/]
+
+    result = @run_command.execute(command: "echo hello")
+    assert_instance_of Ask::Result, result
+    assert result.error?
+  ensure
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+  end
+
+  def test_run_command_unchanged_when_no_rules
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    Ask::Rails.configuration.allowed_commands = nil
+    Ask::Rails.configuration.denied_commands = nil
+
+    result = @run_command.execute(command: "echo test12345")
+    assert result.ok?
+    assert_includes result.output[:output], "test12345"
+  ensure
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+  end
+
   def test_search_codebase_defines_correct_params
     assert_equal "search_codebase", @search_codebase.name
     assert @search_codebase.parameters.key?(:pattern)

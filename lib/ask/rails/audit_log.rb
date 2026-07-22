@@ -69,13 +69,16 @@ module Ask
 
         def determine_status(result, error)
           return "error" if error
-          return "rejected" if result.is_a?(Ask::Result) && result.error?
+          return "rejected" if result.is_a?(Ask::Result) && (result.error? || result.blocked?)
           "success"
         end
 
         def determine_error(result, error)
           return error.message if error
-          return result.error.to_s if result.is_a?(Ask::Result) && result.error?
+          if result.is_a?(Ask::Result)
+            return result.error.to_s if result.error?
+            return result.content.to_s if result.blocked?
+          end
           nil
         end
 
@@ -96,8 +99,16 @@ module Ask
             return { error: error.class.name }
           end
 
+          if result.is_a?(Ask::Result)
+            if result.error?
+              return { error: "rejected: #{result.error.to_s.truncate(200)}" }
+            end
+            if result.blocked?
+              return { error: "blocked: #{result.content.to_s.truncate(200)}" }
+            end
+          end
+
           data = extract_data(result)
-          return { error: "rejected: #{result.error.to_s.truncate(200)}" } if result.is_a?(Ask::Result) && result.error?
           return {} unless data
 
           summary = {}
