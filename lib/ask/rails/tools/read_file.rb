@@ -13,10 +13,7 @@ module Ask
           return Ask::Result.error(message: "File not found: #{path}") unless full_path.exist?
 
           content = full_path.read
-          Ask::Result.success(
-            data: { path: path, content: content, size: content.length },
-            metadata: { path: path, size: content.length }
-          )
+          { path: path, content: content, size: content.length }
         end
       end
     end

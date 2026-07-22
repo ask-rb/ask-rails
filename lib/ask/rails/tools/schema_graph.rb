@@ -33,7 +33,9 @@ module Ask
         private
 
         def discover_ar_models
-          ::Rails.application.eager_load! if defined?(::Rails::Application)
+          if defined?(::Rails::Application) && ::Rails.application
+            ::Rails.application.eager_load! rescue nil
+          end
           ActiveRecord::Base.descendants.reject do |klass|
             klass.abstract_class? ||
             klass.name.nil? ||
@@ -117,7 +119,10 @@ module Ask
 
         def find_model_for_association(models, association)
           class_name = association.class_name
-          models.find { |m| m.name == class_name }
+          # Try exact match first, then match by class name suffix (handles namespace issues)
+          models.find { |m| m.name == class_name } ||
+            models.find { |m| m.name.end_with?("::#{class_name}") } ||
+            models.find { |m| class_name.end_with?("::#{m.name}") }
         end
 
         def build_table_details(detail)
@@ -130,17 +135,23 @@ module Ask
 
             tables[table] = {
               model: klass.name,
-              columns: klass.columns.map { |c|
-                col = { name: c.name, type: c.type, null: c.null }
-                col[:default] = c.default unless c.default.nil?
-                col[:primary_key] = true if c.name == klass.primary_key
-                col
-              },
+              columns: safe_columns(klass),
               indexes: fetch_indexes_for(table)
             }
           end
 
           tables
+        end
+
+        def safe_columns(klass)
+          klass.columns.map { |c|
+            col = { name: c.name, type: c.type, null: c.null }
+            col[:default] = c.default unless c.default.nil?
+            col[:primary_key] = true if c.name == klass.primary_key
+            col
+          }
+        rescue StandardError
+          []
         end
 
         def fetch_indexes_for(table_name)

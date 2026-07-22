@@ -10,10 +10,7 @@ module Ask
           return Ask::Result.error(message: "No routes file found") unless routes_file.exist?
 
           content = routes_file.read
-          Ask::Result.success(
-            data: { content: content },
-            metadata: { size: content.length }
-          )
+          { content: content, size: content.length }
         end
       end
     end
