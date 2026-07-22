@@ -5,27 +5,9 @@ require "active_record"
 require "tmpdir"
 
 class AuditLogTest < Minitest::Test
-  # Shared in-memory SQLite database for all tests
-  def self.setup_fixture_db
-    ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
-    ActiveRecord::Base.connection.create_table(:ask_audit_logs, force: true) do |t|
-      t.string :session_id, null: false
-      t.string :tool_name, null: false
-      t.text :params
-      t.text :result_summary
-      t.string :status, null: false, default: "success"
-      t.text :error_message
-      t.integer :duration_ms
-      t.text :user_context
-      t.string :environment
-      t.datetime :recorded_at, null: false
-      t.timestamps
-    end
-    Ask::Rails::AuditLog.reset_table_check!
-  end
-
   def setup
     @original_current_user = Ask::Rails.configuration.current_user
+    ensure_test_db
     Ask::Rails::AuditLog.reset_table_check!
   end
 
@@ -240,6 +222,30 @@ class AuditLogTest < Minitest::Test
 
   private
 
+  def ensure_test_db
+    ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
+    create_audit_logs_table unless ActiveRecord::Base.connection.table_exists?("ask_audit_logs")
+  rescue StandardError
+    ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
+    create_audit_logs_table
+  end
+
+  def create_audit_logs_table
+    ActiveRecord::Base.connection.create_table(:ask_audit_logs, force: true) do |t|
+      t.string :session_id, null: false
+      t.string :tool_name, null: false
+      t.text :params
+      t.text :result_summary
+      t.string :status, null: false, default: "success"
+      t.text :error_message
+      t.integer :duration_ms
+      t.text :user_context
+      t.string :environment
+      t.datetime :recorded_at, null: false
+      t.timestamps
+    end
+  end
+
   def clear_logs
     ActiveRecord::Base.connection.execute("DELETE FROM ask_audit_logs") if ActiveRecord::Base.connection.table_exists?("ask_audit_logs")
   rescue StandardError
@@ -247,5 +253,3 @@ class AuditLogTest < Minitest::Test
   end
 end
 
-# Set up shared database fixture
-AuditLogTest.setup_fixture_db

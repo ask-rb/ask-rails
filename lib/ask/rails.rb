@@ -19,12 +19,16 @@ module Ask
         tools = configuration.tools.map { |t| t.is_a?(Class) ? t.new : t }
         prompt = extra.delete(:system_prompt) || configuration.system_prompt || default_system_prompt
 
+        # Resolve environment-specific permissions and wire into agent hooks
+        hooks = build_environment_hooks
+
         Ask::Agent::Session.new(
           model: configuration.default_model,
           max_turns: configuration.max_turns,
           system_prompt: prompt,
           tools: tools,
           persistence: configuration.persistence_adapter,
+          hooks: hooks,
           **extra
         )
       end
@@ -38,6 +42,17 @@ module Ask
       end
 
       private
+
+      def build_environment_hooks
+        env_mode = configuration.effective_mode
+        return {} unless env_mode
+
+        perms = Ask::Agent::Extensions::Permissions.new(mode: env_mode)
+        { before_tool: [perms.method(:before_tool_call)] }
+      rescue ArgumentError => e
+        warn "[ask-rails] Invalid environment mode: #{e.message}"
+        {}
+      end
 
       def discovered_rails_tools
         tools = []
@@ -68,6 +83,7 @@ require_relative "rails/version"
 require_relative "rails/engine"
 require_relative "rails/configuration"
 require_relative "rails/audit_log"
+require_relative "rails/environment_permissions"
 require_relative "rails/auth"
 require_relative "rails/persistence"
 require_relative "rails/service_discovery"

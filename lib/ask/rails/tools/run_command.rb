@@ -23,9 +23,13 @@ module Ask
         def check_command_allowed(command)
           config = Ask::Rails.configuration
 
+          # Use per-environment rules if configured, fall back to global
+          denied = config.effective_denied_commands
+          allowed = config.effective_allowed_commands
+
           # 1. Check denied commands first (takes precedence)
-          if config.denied_commands
-            config.denied_commands.each do |pattern|
+          if denied
+            denied.each do |pattern|
               if command.match?(pattern)
                 return Ask::Result.error(
                   message: "Command blocked by deny rule: #{pattern.inspect}"
@@ -35,10 +39,10 @@ module Ask
           end
 
           # 2. Check allowed commands (if configured)
-          if config.allowed_commands
-            matches = config.allowed_commands.any? { |pattern| command.match?(pattern) }
+          if allowed
+            matches = allowed.any? { |pattern| command.match?(pattern) }
             unless matches
-              allowed_desc = config.allowed_commands.map(&:inspect).join(", ")
+              allowed_desc = allowed.map(&:inspect).join(", ")
               return Ask::Result.error(
                 message: "Command blocked: does not match any allowed pattern (#{allowed_desc})"
               )

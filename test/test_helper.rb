@@ -28,6 +28,7 @@ require "ask/result"
 
 require "ask/rails"
 require "ask/rails/audit_log"
+require "ask/rails/environment_permissions"
 require "ask/rails/tool"
 require "ask/rails/tools/read_file"
 require "ask/rails/tools/run_command"

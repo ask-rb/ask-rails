@@ -58,4 +58,39 @@ class ConfigurationTest < Minitest::Test
     config.current_user = -> { { id: 1 } }
     assert_equal 1, config.current_user.call[:id]
   end
+
+  def test_environment_builder
+    config = Ask::Rails::Configuration.new
+    config.environment :production do |env|
+      env.mode = :read_only
+      env.allowed_commands = [/^rails /]
+    end
+    assert config.environments.key?(:production)
+    assert_equal :read_only, config.environments[:production].mode
+  end
+
+  def test_effective_allowed_commands_uses_global_when_no_env_match
+    config = Ask::Rails::Configuration.new
+    config.allowed_commands = [/^echo /]
+    assert_equal config.allowed_commands, config.effective_allowed_commands
+  end
+
+  def test_effective_denied_commands_uses_global_when_no_env_match
+    config = Ask::Rails::Configuration.new
+    config.denied_commands = [/rm/]
+    assert_equal config.denied_commands, config.effective_denied_commands
+  end
+
+  def test_effective_mode_returns_nil_when_no_env_match
+    config = Ask::Rails::Configuration.new
+    assert_nil config.effective_mode
+  end
+
+  def test_environment_defaults_remain_nil
+    config = Ask::Rails::Configuration.new
+    config.environment(:production) { |e| }
+    assert_nil config.environments[:production].mode
+    assert_nil config.environments[:production].allowed_commands
+    assert_nil config.environments[:production].denied_commands
+  end
 end

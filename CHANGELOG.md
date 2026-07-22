@@ -1,3 +1,25 @@
+## [0.6.0] — 2026-07-23
+
+### Added
+
+- **Per-environment permissions** — Configure access modes and command allowlists per Rails environment:
+  ```ruby
+  Ask::Rails.configure do |config|
+    config.environment :production do |env|
+      env.mode = :read_only
+      env.allowed_commands = [/^rails routes/]
+      env.denied_commands = [/rm/, /dropdb/]
+    end
+
+    config.environment :development do |env|
+      env.mode = :full_access
+    end
+  end
+  ```
+- **`Ask::Rails::EnvironmentPermissions`** — New config class holding `mode`, `allowed_commands`, and `denied_commands` per environment.
+- **Automatic Permissions wiring** — When an environment `mode` is set, `agent_session` automatically creates an `Ask::Agent::Extensions::Permissions` extension and wires it into the session hooks.
+- **Effective rule resolution** — `Configuration#effective_allowed_commands`, `#effective_denied_commands`, and `#effective_mode` resolve per-environment rules or fall back to global config.
+
 ## [0.5.0] — 2026-07-22
 
 ### Added

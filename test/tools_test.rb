@@ -78,6 +78,70 @@ class ToolsTest < Minitest::Test
     Ask::Rails.configuration.denied_commands = original_denied
   end
 
+  def test_run_command_respects_environment_allowed_commands
+    original_env = Rails.env
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    original_environments = Ask::Rails.configuration.environments.dup
+    Rails.env = "staging"
+
+    Ask::Rails.configuration.environment :staging do |env|
+      env.allowed_commands = [/^echo /]
+    end
+
+    result = @run_command.execute(command: "echo staging_only")
+    assert result.ok?
+    assert_includes result.output[:output], "staging_only"
+  ensure
+    Rails.env = original_env
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+    Ask::Rails.configuration.environments.clear
+    Ask::Rails.configuration.environments.merge!(original_environments)
+  end
+
+  def test_run_command_environment_deny_takes_precedence_over_global_allow
+    original_env = Rails.env
+    original_allowed = Ask::Rails.configuration.allowed_commands
+    original_denied = Ask::Rails.configuration.denied_commands
+    original_environments = Ask::Rails.configuration.environments.dup
+    Rails.env = "staging"
+
+    # Global allows everything, but staging denies specific commands
+    Ask::Rails.configuration.allowed_commands = nil
+    Ask::Rails.configuration.environment :staging do |env|
+      env.denied_commands = [/dropdb/]
+    end
+
+    result = @run_command.execute(command: "dropdb myapp")
+    assert result.error?
+    assert_includes result.to_s, "dropdb"
+  ensure
+    Rails.env = original_env
+    Ask::Rails.configuration.allowed_commands = original_allowed
+    Ask::Rails.configuration.denied_commands = original_denied
+    Ask::Rails.configuration.environments.clear
+    Ask::Rails.configuration.environments.merge!(original_environments)
+  end
+
+  def test_run_command_ignores_other_environment_rules
+    original_env = Rails.env
+    original_environments = Ask::Rails.configuration.environments.dup
+    Rails.env = "development"
+
+    # Production has strict rules, but development should be unaffected
+    Ask::Rails.configuration.environment :production do |env|
+      env.denied_commands = [/echo/]
+    end
+
+    result = @run_command.execute(command: "echo dev_ok")
+    assert result.ok?
+  ensure
+    Rails.env = original_env
+    Ask::Rails.configuration.environments.clear
+    Ask::Rails.configuration.environments.merge!(original_environments)
+  end
+
   def test_run_command_unchanged_when_no_rules
     original_allowed = Ask::Rails.configuration.allowed_commands
     original_denied = Ask::Rails.configuration.denied_commands
