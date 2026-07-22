@@ -1,3 +1,22 @@
+## [0.4.0] — 2026-07-22
+
+### Added
+
+- **Audit Log** — Every tool call is now recorded in the `ask_audit_logs` table with the intent (sanitized params), outcome (status/timing), and user context. Append-only, never modified. Provides a trustworthy record of what the agent did without storing sensitive data or full results.
+  - `Ask::Rails::AuditLog.log` — logs a tool execution event
+  - Sensitive params (keys matching `password`, `secret`, `token`, `api_key`, `key`) are automatically redacted as `[REDACTED]`
+  - Fires `audit_log.ask_rails` ActiveSupport notification for host app alerting
+  - Results are summarized (row count for queries, exit status for commands, etc.) — full data never stored
+  - Generator creates the `create_ask_audit_logs` migration
+
+- **`current_user` configuration** — `Ask::Rails.configure { |c| c.current_user = -> { Current.user ? { id: Current.user.id, email: Current.user.email } : nil } }` attaches user context to every audit log entry.
+
+- **`Ask::Rails::Tool.session_id`** — Thread-local accessor so tool calls are correlated with their agent session in the audit log.
+
+### Changed
+
+- **Tool base class** — `Ask::Rails::Tool#call` is now instrumented to automatically log every invocation to the audit log. All 7 Rails tools inherit this behavior.
+
 ## [0.3.0] — 2026-07-21
 
 ### Added

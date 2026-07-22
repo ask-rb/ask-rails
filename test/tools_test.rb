@@ -62,6 +62,65 @@ class ToolsTest < Minitest::Test
     assert Ask::Rails::Tools::ReadLog.ancestors.include?(Ask::Tool)
   end
 
+  def test_tool_inherits_audit_log_instrumentation
+    assert_respond_to Ask::Rails::Tools::ReadFile, :session_id
+    assert_respond_to Ask::Rails::Tools::ReadFile, :session_id=
+    assert_respond_to Ask::Rails::Tool, :session_id
+  end
+
+  def test_tool_call_invokes_audit_log
+    # Set a session ID so the audit log correlates the call
+    Ask::Rails::Tool.session_id = "test-session-123"
+
+    log_entries = []
+    subscriber = ActiveSupport::Notifications.subscribe("audit_log.ask_rails") do |_name, _start, _finish, _id, payload|
+      log_entries << payload
+    end
+
+    # Use a tool that will succeed
+    result = @read_file.call(path: "/tmp")
+    assert_instance_of Ask::Result, result
+
+    assert_equal 1, log_entries.length
+    assert_equal "read_file", log_entries.first[:tool_name]
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    Ask::Rails::Tool.session_id = nil
+  end
+
+  def test_tool_call_audit_log_includes_session_id
+    Ask::Rails::Tool.session_id = "session-456"
+
+    entry = nil
+    subscriber = ActiveSupport::Notifications.subscribe("audit_log.ask_rails") do |*args|
+      entry = args.last
+    end
+
+    @read_routes.call
+
+    assert_equal "session-456", entry[:session_id]
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    Ask::Rails::Tool.session_id = nil
+  end
+
+  def test_tool_call_audit_log_records_duration
+    Ask::Rails::Tool.session_id = "duration-test"
+
+    entry = nil
+    subscriber = ActiveSupport::Notifications.subscribe("audit_log.ask_rails") do |*args|
+      entry = args.last
+    end
+
+    @read_routes.call
+
+    assert entry[:duration_ms].is_a?(Integer), "duration should be an integer"
+    assert_operator entry[:duration_ms], :>=, 0
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    Ask::Rails::Tool.session_id = nil
+  end
+
   # --- QueryDatabase tests ---
 
   def test_query_database_rejects_insert

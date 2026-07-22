@@ -67,6 +67,7 @@ end
 require_relative "rails/version"
 require_relative "rails/engine"
 require_relative "rails/configuration"
+require_relative "rails/audit_log"
 require_relative "rails/auth"
 require_relative "rails/persistence"
 require_relative "rails/service_discovery"

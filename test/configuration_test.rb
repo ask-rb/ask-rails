@@ -47,4 +47,15 @@ class ConfigurationTest < Minitest::Test
     config.tool_concurrency = 10
     assert_equal 10, config.tool_concurrency
   end
+
+  def test_current_user_defaults_to_nil
+    config = Ask::Rails::Configuration.new
+    assert_nil config.current_user
+  end
+
+  def test_current_user_settable
+    config = Ask::Rails::Configuration.new
+    config.current_user = -> { { id: 1 } }
+    assert_equal 1, config.current_user.call[:id]
+  end
 end

@@ -4,7 +4,8 @@ module Ask
   module Rails
     class Configuration
       attr_accessor :default_model, :max_turns, :system_prompt,
-                    :tool_concurrency, :persistence_adapter, :tools
+                    :tool_concurrency, :persistence_adapter, :tools,
+                    :current_user
 
       def initialize
         @default_model = "gpt-4o"
@@ -13,6 +14,7 @@ module Ask
         @tool_concurrency = 5
         @persistence_adapter = nil
         @tools = []
+        @current_user = nil
       end
     end
   end
