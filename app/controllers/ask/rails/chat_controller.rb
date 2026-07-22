@@ -61,19 +61,29 @@ module Ask
 
           yielder << "data: #{JSON.generate(type: 'start', session_id: @session_id)}\n\n"
 
-          agent.run(prompt) do |chunk|
-            if chunk.content&.length&.> 0
-              yielder << "data: #{JSON.generate(type: 'delta', content: chunk.content)}\n\n"
+          begin
+            agent.run(prompt) do |chunk|
+              if chunk.content&.length&.> 0
+                yielder << "data: #{JSON.generate(type: 'delta', content: chunk.content)}\n\n"
+              end
+              if chunk.thinking&.length&.> 0
+                yielder << "data: #{JSON.generate(type: 'thinking', content: chunk.thinking)}\n\n"
+              end
             end
-            if chunk.thinking&.length&.> 0
-              yielder << "data: #{JSON.generate(type: 'thinking', content: chunk.thinking)}\n\n"
-            end
+
+            agent.save
+            @session = agent
+
+            yielder << "data: #{JSON.generate(type: 'done', session_id: @session_id)}\n\n"
+          rescue Ask::Agent::MaxTurnsExceeded => e
+            yielder << "data: #{JSON.generate(type: 'error', message: "Agent hit the turn limit (#{e.message})")}\n\n"
+          rescue Ask::Auth::MissingCredential => e
+            yielder << "data: #{JSON.generate(type: 'error', message: "Missing API key: #{e.message}. Check your provider configuration.")}\n\n"
+          rescue Ask::Auth::InvalidCredential => e
+            yielder << "data: #{JSON.generate(type: 'error', message: "Invalid API key: #{e.message}. Update your credentials.")}\n\n"
+          rescue StandardError => e
+            yielder << "data: #{JSON.generate(type: 'error', message: "Agent error: #{e.message}")}\n\n"
           end
-
-          agent.save
-          @session = agent
-
-          yielder << "data: #{JSON.generate(type: 'done', session_id: @session_id)}\n\n"
         ensure
           agent&.remove_event_subscriber(tool_sub) if tool_sub
         end

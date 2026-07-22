@@ -368,6 +368,12 @@
                     case 'tool_update':
                       // Could show progress in the card
                       break;
+                    case 'error':
+                      addMessage('system', '⚠️ ' + (data.message || 'An error occurred'));
+                      isStreaming = false;
+                      document.getElementById('send-button').disabled = false;
+                      document.getElementById('stream-indicator').textContent = '';
+                      break;
                     case 'done':
                       isStreaming = false;
                       document.getElementById('send-button').disabled = false;
