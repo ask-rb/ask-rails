@@ -37,6 +37,8 @@ require "ask/rails/tools/read_routes"
 require "ask/rails/tools/query_database"
 require "ask/rails/tools/read_model"
 require "ask/rails/tools/read_log"
+require "ask/rails/tools/schema_graph"
+require "ask/rails/tools/route_inspector"
 require "ask/rails/service_discovery"
 
 require "minitest/autorun"

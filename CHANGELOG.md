@@ -1,3 +1,24 @@
+## [0.8.0] — 2026-07-23
+
+### Added
+
+- **SchemaGraph tool** — Full application schema introspection in one call. Returns every model, table, column (with types and nullability), association (belongs_to, has_many, has_one, HABTM, through), validation, index, and polymorphic relationship. The agent gets a complete mental model of the app's data layer — no more reading models one at a time.
+  - `schema_graph(detail: "all")` — everything
+  - `schema_graph(detail: "models")` — just models and columns
+  - `schema_graph(detail: "associations")` — just the association graph
+  - `schema_graph(detail: "tables")` — just tables, columns, and indexes
+
+- **RouteInspector tool** — Parsed Rails route table (not raw routes.rb). Returns every route with HTTP verb, path, controller, action, and name. Supports filtering by controller and path pattern. Replaces the old ReadRoutes which returned raw file content.
+  - `route_inspector` — all routes
+  - `route_inspector(controller: "users")` — routes for a specific controller
+  - `route_inspector(pattern: "admin")` — routes matching a path pattern
+
+- **Core tools auto-discovery** — The 9 built-in Rails tools (ReadFile, RunCommand, SearchCodebase, ReadRoutes, QueryDatabase, ReadModel, ReadLog, SchemaGraph, RouteInspector) are now automatically included in every agent session. Previously they were loaded but not registered.
+
+### Changed
+
+- `discover_tools!` now includes `CORE_RAILS_TOOLS` — all 9 Rails tools are automatically available to the agent.
+
 ## [0.7.0] — 2026-07-23
 
 ### Added

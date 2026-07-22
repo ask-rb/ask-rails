@@ -34,7 +34,7 @@ module Ask
       end
 
       def discover_tools!
-        self.configuration.tools = Ask::Tools::Shell::TOOLS.map(&:new) + discovered_rails_tools
+        self.configuration.tools = Ask::Tools::Shell::TOOLS.map(&:new) + core_rails_tools + discovered_user_tools
       end
 
       def root
@@ -54,7 +54,11 @@ module Ask
         {}
       end
 
-      def discovered_rails_tools
+      def core_rails_tools
+        CORE_RAILS_TOOLS.map(&:new)
+      end
+
+      def discovered_user_tools
         tools = []
         files = Dir[::Rails.root.join("app", "tools", "*.rb")]
         files.each do |f|
@@ -95,8 +99,19 @@ require_relative "rails/tools/read_routes"
 require_relative "rails/tools/query_database"
 require_relative "rails/tools/read_model"
 require_relative "rails/tools/read_log"
+require_relative "rails/tools/schema_graph"
+require_relative "rails/tools/route_inspector"
 
 # Railtie is loaded only when Rails is fully available
 if defined?(::Rails::Railtie)
   require_relative "rails/railtie"
 end
+
+# Define after all tool files are loaded so the constants resolve
+Ask::Rails::CORE_RAILS_TOOLS = [
+  Ask::Rails::Tools::ReadFile, Ask::Rails::Tools::RunCommand,
+  Ask::Rails::Tools::SearchCodebase, Ask::Rails::Tools::ReadRoutes,
+  Ask::Rails::Tools::QueryDatabase, Ask::Rails::Tools::ReadModel,
+  Ask::Rails::Tools::ReadLog, Ask::Rails::Tools::SchemaGraph,
+  Ask::Rails::Tools::RouteInspector
+].freeze
