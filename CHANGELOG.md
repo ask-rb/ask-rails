@@ -1,3 +1,23 @@
+## [0.7.0] — 2026-07-23
+
+### Added
+
+- **Tool execution visualization** — The chat UI now shows live tool execution cards as the agent runs. Each tool call displays as an expandable card with name, args, and real-time elapsed time. Cards show ✓ for success or ✗ for failure with duration.
+- **Activity panel** — New "Activity" sidebar tab shows the audit log in real-time. Browse recent tool calls across all sessions with status, duration, and timestamp.
+- **Per-session audit view** — Clicking a session loads its audit trail. New `GET /ask/sessions/:session_id/audit` endpoint.
+- **Individual session deletion** — Delete sessions one at a time via the ✕ button in the sidebar. New `DELETE /ask/sessions/:id` route.
+- **Sidebar search** — Filter sessions by text in the sidebar search box.
+- **Session previews** — Sidebar shows the first message as a preview instead of just the session ID.
+- **Keyboard shortcuts** — Ctrl+K / Cmd+K focuses the input. Enter sends (Shift+Enter for newline).
+- **Environment badge** — Current Rails.env shown in both the sidebar footer and chat header.
+- **`destroy_session` action** — New controller action for deleting individual sessions.
+
+### Changed
+
+- **Chat layout** — Complete visual overhaul: darker theme, improved spacing, tool cards, sidebar tabs (Sessions/Activity), session search, and streaming indicator.
+- **`message` SSE stream** — Now emits `tool_start`, `tool_end`, and `tool_update` events alongside `delta` and `thinking` for real-time tool execution visibility.
+- **Controller actions** — `destroy` renamed to `destroy_all` for clarity.
+
 ## [0.6.0] — 2026-07-23
 
 ### Added
