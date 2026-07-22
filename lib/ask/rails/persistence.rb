@@ -28,7 +28,7 @@ module Ask
       private
 
       def model_class
-        @model_class || (raise "No model class configured. Use Persistence.new(model_class: MyModel)")
+        @model_class || Ask::Rails::Session
       end
     end
   end

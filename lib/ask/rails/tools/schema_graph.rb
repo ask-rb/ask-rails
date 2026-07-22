@@ -47,21 +47,18 @@ module Ask
         end
 
         def build_model_details(models, detail)
-          models.map do |klass|
+          models.filter_map do |klass|
+            name = klass.name rescue nil
+            next nil unless name
+
             entry = {
-              name: klass.name,
+              name: name,
               table_name: klass.table_name,
-              primary_key: klass.primary_key
+              primary_key: safe_primary_key(klass)
             }
 
             if klass.respond_to?(:columns)
-              entry[:columns] = klass.columns.map { |c|
-                col = { name: c.name, type: c.type, null: c.null }
-                col[:default] = c.default unless c.default.nil?
-                col[:primary_key] = true if c.name == klass.primary_key
-                col[:limit] = c.limit if c.limit
-                col
-              }
+              entry[:columns] = safe_columns(klass)
             end
 
             if klass.respond_to?(:reflect_on_all_associations)
@@ -141,6 +138,12 @@ module Ask
           end
 
           tables
+        end
+
+        def safe_primary_key(klass)
+          klass.primary_key
+        rescue StandardError
+          nil
         end
 
         def safe_columns(klass)

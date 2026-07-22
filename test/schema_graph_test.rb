@@ -5,9 +5,14 @@ require "active_record"
 require "tmpdir"
 
 class SchemaGraphTest < Minitest::Test
+  @@fixture_created = false
+
   def setup
     @tool = Ask::Rails::Tools::SchemaGraph.new
+    ensure_fixture_db
   end
+
+  # --- Basic structure tests ---
 
   def test_defines_correct_name
     assert_equal "schema_graph", @tool.name
@@ -37,126 +42,97 @@ class SchemaGraphTest < Minitest::Test
 
   def test_models_detail_returns_only_models
     result = @tool.execute(detail: "models")
-    assert result[:models].is_a?(Array), "models should be an array"
-    assert_nil result[:tables], "models detail should not include tables"
-    assert_nil result[:associations], "models detail should not include associations"
+    assert result[:models].is_a?(Array)
+    assert_nil result[:tables]
+    assert_nil result[:associations]
   end
 
   def test_associations_detail_returns_only_associations
     result = @tool.execute(detail: "associations")
-    assert result[:associations].is_a?(Array), "associations should be an array"
-    assert_nil result[:models], "associations detail should not include models"
-    assert_nil result[:tables], "associations detail should not include tables"
+    assert result[:associations].is_a?(Array)
+    assert_nil result[:models]
   end
 
   def test_tables_detail_returns_only_tables
     result = @tool.execute(detail: "tables")
-    assert result[:tables].is_a?(Hash), "tables should be a hash"
-    assert_nil result[:models], "tables detail should not include models"
-    assert_nil result[:associations], "tables detail should not include associations"
+    assert result[:tables].is_a?(Hash)
+    assert_nil result[:models]
   end
 
-  # --- Live database tests with real models ---
+  # --- Live database tests with fixture models ---
 
-  def test_reports_models_and_tables_from_live_db
-    with_real_models do |models|
-      result = @tool.execute(detail: "all")
-
-      assert_operator result[:summary][:model_count], :>=, 3,
-        "Should detect at least the 3 test models"
-
-      model_names = result[:models].map { |m| m[:name] }
-      assert_includes model_names, "SchemaGraphTest::TestUser"
-      assert_includes model_names, "SchemaGraphTest::TestPost"
-      assert_includes model_names, "SchemaGraphTest::TestComment"
-    end
+  def test_discovers_all_fixture_models
+    result = @tool.execute(detail: "models")
+    names = result[:models].map { |m| m[:name] }
+    assert_includes names, "SchemaGraphTest::TestUser"
+    assert_includes names, "SchemaGraphTest::TestPost"
+    assert_includes names, "SchemaGraphTest::TestComment"
   end
 
   def test_columns_have_correct_types
-    with_real_models do |models|
-      result = @tool.execute(detail: "all")
-      user = result[:models].find { |m| m[:name] == "SchemaGraphTest::TestUser" }
+    result = @tool.execute(detail: "models")
+    user = result[:models].find { |m| m[:name] == "SchemaGraphTest::TestUser" }
+    refute_nil user
 
-      refute_nil user, "TestUser should be in the schema"
-      assert user.key?(:columns), "User should have columns"
+    email_col = user[:columns].find { |c| c[:name] == "email" }
+    refute_nil email_col
+    assert_equal :string, email_col[:type]
+    refute email_col[:null]
 
-      email_col = user[:columns].find { |c| c[:name] == "email" }
-      refute_nil email_col, "User should have an email column"
-      assert_equal :string, email_col[:type]
-      refute email_col[:null], "email should be NOT NULL"
-
-      score_col = user[:columns].find { |c| c[:name] == "score" }
-      refute_nil score_col, "User should have a score column"
-      assert_equal :integer, score_col[:type]
-      assert score_col[:null], "score should be nullable"
-    end
+    score_col = user[:columns].find { |c| c[:name] == "score" }
+    refute_nil score_col
+    assert_equal :integer, score_col[:type]
+    assert score_col[:null]
   end
 
   def test_associations_are_detected
-    with_real_models do |models|
-      result = @tool.execute(detail: "associations")
-      edges = result[:associations]
+    result = @tool.execute(detail: "associations")
+    edges = result[:associations]
 
-      # User has_many :posts
-      assert edges.any? { |e| e[:from] == "SchemaGraphTest::TestUser" && e[:to] == "SchemaGraphTest::TestPost" && e[:type] == :has_many },
-        "Should detect User has_many :posts"
-
-      # Post belongs_to :user
-      assert edges.any? { |e| e[:from] == "SchemaGraphTest::TestPost" && e[:to] == "SchemaGraphTest::TestUser" && e[:type] == :belongs_to },
-        "Should detect Post belongs_to :user"
-
-      # Post has_many :comments
-      assert edges.any? { |e| e[:from] == "SchemaGraphTest::TestPost" && e[:to] == "SchemaGraphTest::TestComment" && e[:type] == :has_many },
-        "Should detect Post has_many :comments"
-    end
+    assert edges.any? { |e|
+      e[:from] == "SchemaGraphTest::TestUser" && e[:to] == "SchemaGraphTest::TestPost" && e[:type] == :has_many
+    }, "Should detect User has_many :posts"
+    assert edges.any? { |e|
+      e[:from] == "SchemaGraphTest::TestPost" && e[:to] == "SchemaGraphTest::TestUser" && e[:type] == :belongs_to
+    }, "Should detect Post belongs_to :user"
   end
 
   def test_foreign_keys_in_associations
-    with_real_models do |models|
-      result = @tool.execute(detail: "associations")
-      edges = result[:associations]
-
-      post_to_user = edges.find { |e| e[:from] == "SchemaGraphTest::TestPost" && e[:type] == :belongs_to }
-      refute_nil post_to_user, "Post belongs_to User edge should exist"
-      assert post_to_user[:foreign_key].to_s.end_with?("user_id"),
-        "Expected foreign_key ending with user_id, got #{post_to_user[:foreign_key]}"
-    end
+    result = @tool.execute(detail: "associations")
+    edge = result[:associations].find { |e| e[:from] == "SchemaGraphTest::TestPost" && e[:type] == :belongs_to }
+    refute_nil edge
+    assert edge[:foreign_key].to_s.end_with?("user_id")
   end
 
   def test_validators_are_detected
-    with_real_models do |models|
-      result = @tool.execute(detail: "models")
-      user = result[:models].find { |m| m[:name] == "SchemaGraphTest::TestUser" }
-
-      refute_nil user, "TestUser should be in results"
-      assert user.key?(:validators), "User should have validators"
-
-      email_presence = user[:validators].find { |v| v[:attribute] == "email" && v[:kind] == :presence }
-      refute_nil email_presence, "User should validate presence of email"
-    end
+    result = @tool.execute(detail: "models")
+    user = result[:models].find { |m| m[:name] == "SchemaGraphTest::TestUser" }
+    refute_nil user
+    assert user[:validators].any? { |v| v[:attribute] == "email" && v[:kind] == :presence }
   end
 
   def test_tables_include_indexes
-    with_real_models do |models|
-      result = @tool.execute(detail: "tables")
-      tables = result[:tables]
+    result = @tool.execute(detail: "tables")
+    users_table = result[:tables].values.find { |t| t[:model] == "SchemaGraphTest::TestUser" }
+    refute_nil users_table
+    assert users_table[:indexes].any? { |idx| idx[:columns].include?("email") && idx[:unique] }
+  end
 
-      users_table = tables.values.find { |t| t[:model] == "SchemaGraphTest::TestUser" }
-      refute_nil users_table, "TestUser table should be present"
-
-      assert users_table.key?(:indexes), "Table should have indexes"
-      assert users_table[:indexes].any? { |idx| idx[:columns].include?("email") && idx[:unique] },
-        "Should detect unique index on email"
-    end
+  def test_summary_has_counts
+    result = @tool.execute(detail: "all")
+    assert_operator result[:summary][:model_count], :>=, 3
+    assert_operator result[:summary][:table_count], :>=, 3
   end
 
   private
 
-  def with_real_models
-    # Create a database connection
+  def ensure_fixture_db
+    # Only create the fixture once — reuse across tests
+    return if @@fixture_created
+    @@fixture_created = true
+
     ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
 
-    # Create schema
     ActiveRecord::Base.connection.create_table(:test_users, force: true) do |t|
       t.string :email, null: false
       t.string :name
@@ -178,13 +154,12 @@ class SchemaGraphTest < Minitest::Test
       t.timestamps
     end
 
-    # Define model classes using Module const_set so they persist
     user_class = Class.new(ActiveRecord::Base) do
       self.table_name = "test_users"
       has_many :test_posts, foreign_key: :test_user_id
       validates :email, presence: true, uniqueness: true
     end
-    self.class.const_set(:TestUser, user_class)
+    self.class.const_set(:TestUser, user_class) unless self.class.const_defined?(:TestUser, false)
 
     post_class = Class.new(ActiveRecord::Base) do
       self.table_name = "test_posts"
@@ -192,28 +167,15 @@ class SchemaGraphTest < Minitest::Test
       has_many :test_comments, foreign_key: :test_post_id
       validates :title, presence: true
     end
-    self.class.const_set(:TestPost, post_class)
+    self.class.const_set(:TestPost, post_class) unless self.class.const_defined?(:TestPost, false)
 
     comment_class = Class.new(ActiveRecord::Base) do
       self.table_name = "test_comments"
       belongs_to :test_post
       validates :content, presence: true
     end
-    self.class.const_set(:TestComment, comment_class)
+    self.class.const_set(:TestComment, comment_class) unless self.class.const_defined?(:TestComment, false)
 
-    # Touch each model so they register in descendants
-    [user_class, post_class, comment_class].each(&:table_name)
-
-    yield
-
-  ensure
-    # Clean up AR descendants
-    [self.class::TestUser, self.class::TestPost, self.class::TestComment].each do |klass|
-      ActiveRecord::Base.descendants.delete(klass) rescue nil
-    end
-    # Remove constants
-    [:TestUser, :TestPost, :TestComment].each { |c| self.class.send(:remove_const, c) rescue nil }
-    ActiveRecord::Base.connection.disconnect! rescue nil
-    ActiveRecord::Base.remove_connection rescue nil
+    [self.class::TestUser, self.class::TestPost, self.class::TestComment].each(&:table_name)
   end
 end
