@@ -2,7 +2,7 @@
 
 module Ask
   module Rails
-    class Persistence
+    class Persistence < ::Ask::State::Adapter
       def initialize(model_class: nil)
         @model_class = model_class
       end
@@ -32,6 +32,10 @@ module Ask
       def load(session_id)
         record = model_class.find_by(session_id: session_id)
         record&.data
+      end
+
+      def clear
+        model_class.delete_all
       end
 
       def list

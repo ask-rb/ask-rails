@@ -190,3 +190,13 @@
 ### Added
 
 - **Persistence tests** — New `FakeModel` fixture with 6 real roundtrip tests covering set/get, missing key, delete, list, and old save/load interface.
+## [0.11.1] — 2026-07-23
+
+### Changed
+
+- **Persistence now inherits from Ask::State::Adapter** — Contract enforcement instead of duck-typing. Users get a compile-time guarantee that all required methods are implemented.
+
+### Added
+
+- **Persistence#clear** — Required by the State::Adapter contract. Removes all session records.
+
