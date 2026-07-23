@@ -179,3 +179,14 @@
 - Rails Tools — `ReadFile`, `RunCommand`, `SearchCodebase`, `ReadRoutes` (Rails.root-aware)
 - Generators — `rails generate ask_rails:install` creates migration, initializer, `app/tools/`
 - Dependencies: rails >= 7.1, ask-tools, ask-tools-shell, ask-agent, ask-auth
+
+## [0.11.0] — 2026-07-23
+
+### Changed
+
+- **`Persistence` adapter now speaks `State::Adapter` contract** — Added `set(key, value)` and `get(key)` methods delegating to `save`/`load`. This makes it compatible with the new `state:` keyword on `Ask::Agent::Session`. Old `save`/`load` interface preserved for backward compatibility.
+- **`agent_session` uses `state:` keyword** — Changed from `persistence:` to `state:`.
+
+### Added
+
+- **Persistence tests** — New `FakeModel` fixture with 6 real roundtrip tests covering set/get, missing key, delete, list, and old save/load interface.

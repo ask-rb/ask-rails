@@ -30,7 +30,7 @@ module Ask
           max_turns: configuration.max_turns,
           system_prompt: prompt,
           tools: tools,
-          persistence: configuration.persistence_adapter,
+          state: configuration.persistence_adapter,
           hooks: hooks,
           **extra
         )

@@ -7,6 +7,23 @@ module Ask
         @model_class = model_class
       end
 
+      # State::Adapter contract — set/get/delete
+      # (aliased through save/load for backward compatibility)
+
+      def set(key, value, ttl: nil)
+        save(key, value)
+      end
+
+      def get(key)
+        load(key)
+      end
+
+      def delete(session_id)
+        model_class.where(session_id: session_id).delete_all
+      end
+
+      # Backward-compatible interface (used by old code and list queries)
+
       def save(session_id, data)
         record = model_class.find_or_initialize_by(session_id: session_id)
         record.update!(data: data)
@@ -15,10 +32,6 @@ module Ask
       def load(session_id)
         record = model_class.find_by(session_id: session_id)
         record&.data
-      end
-
-      def delete(session_id)
-        model_class.where(session_id: session_id).delete_all
       end
 
       def list
