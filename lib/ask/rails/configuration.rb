@@ -5,7 +5,8 @@ module Ask
     class Configuration
       attr_accessor :default_model, :max_turns, :system_prompt,
                     :tool_concurrency, :persistence_adapter, :tools,
-                    :current_user, :allowed_commands, :denied_commands
+                    :current_user, :allowed_commands, :denied_commands,
+                    :max_session_age, :max_sessions
 
       # @return [Hash{Symbol => EnvironmentPermissions}] per-environment permission rules
       attr_reader :environments
@@ -20,6 +21,8 @@ module Ask
         @current_user = nil
         @allowed_commands = nil
         @denied_commands = nil
+        @max_session_age = nil
+        @max_sessions = nil
         @environments = {}
       end
 

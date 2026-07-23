@@ -1,3 +1,14 @@
+## [0.10.0] — 2026-07-23
+
+### Added
+
+- **Session cleanup** — Auto-prune old or excess sessions via `max_session_age` and `max_sessions` config options. Prunes both `ask_sessions` and `ask_audit_logs` tables.
+  - `config.max_session_age = 7.days` — deletes sessions older than the threshold
+  - `config.max_sessions = 1000` — keeps at most N sessions, deletes oldest
+  - Auto-prunes on every `agent_session` call when configured
+  - Also callable manually: `Ask::Rails.cleanup!`
+  - Rake task: `rails ask_rails:cleanup`
+
 ## [0.9.0] — 2026-07-23
 
 ### Fixed

@@ -4,7 +4,11 @@ module Ask
   module Rails
     class Railtie < ::Rails::Railtie
       rake_tasks do
-        # Load rake tasks if any
+        desc "Prune old sessions and audit logs based on configuration limits"
+        task ask_rails: :cleanup do
+          count = Ask::Rails.cleanup!
+          puts "Cleaned up #{count || 0} sessions."
+        end
       end
 
       generators do

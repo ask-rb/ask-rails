@@ -59,6 +59,28 @@ class ConfigurationTest < Minitest::Test
     assert_equal 1, config.current_user.call[:id]
   end
 
+  def test_max_session_age_defaults_to_nil
+    config = Ask::Rails::Configuration.new
+    assert_nil config.max_session_age
+  end
+
+  def test_max_session_age_settable
+    config = Ask::Rails::Configuration.new
+    config.max_session_age = 86400
+    assert_equal 86400, config.max_session_age
+  end
+
+  def test_max_sessions_defaults_to_nil
+    config = Ask::Rails::Configuration.new
+    assert_nil config.max_sessions
+  end
+
+  def test_max_sessions_settable
+    config = Ask::Rails::Configuration.new
+    config.max_sessions = 100
+    assert_equal 100, config.max_sessions
+  end
+
   def test_environment_builder
     config = Ask::Rails::Configuration.new
     config.environment :production do |env|

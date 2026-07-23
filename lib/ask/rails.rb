@@ -16,6 +16,9 @@ module Ask
       end
 
       def agent_session(**extra)
+        # Auto-prune if configured
+        cleanup! if configuration.max_session_age || configuration.max_sessions
+
         tools = configuration.tools.map { |t| t.is_a?(Class) ? t.new : t }
         prompt = extra.delete(:system_prompt) || configuration.system_prompt || default_system_prompt
 
@@ -37,6 +40,19 @@ module Ask
         self.configuration.tools = Ask::Tools::Shell::TOOLS.map(&:new) + core_rails_tools + discovered_user_tools
       end
 
+      # Prune old sessions and audit logs based on configuration limits.
+      #
+      # Removes sessions older than +max_session_age+ seconds, and limits the
+      # total number of sessions to +max_sessions+ (deleting the oldest first).
+      # Audit log entries older than the oldest kept session are also removed.
+      #
+      # Call manually via rake task or cron, or configure limits to auto-prune
+      # on agent_session creation.
+      def cleanup!
+        prune_old_sessions
+        limit_session_count
+      end
+
       def root
         @root ||= Pathname.new(File.expand_path("..", __dir__))
       end
@@ -52,6 +68,60 @@ module Ask
       rescue ArgumentError => e
         warn "[ask-rails] Invalid environment mode: #{e.message}"
         {}
+      end
+
+      def prune_old_sessions
+        age = configuration.max_session_age
+        return unless age&.> 0
+        return unless persistence_available?
+
+        cutoff = age.seconds.ago
+        count = 0
+
+        configuration.persistence_adapter.list.each do |id|
+          data = configuration.persistence_adapter.load(id)
+          created = data&.dig(:metadata, :created_at)
+          if created && Time.parse(created) < cutoff
+            configuration.persistence_adapter.delete(id)
+            count += 1
+          end
+        end
+
+        count
+      rescue StandardError
+        nil
+      end
+
+      def limit_session_count
+        max = configuration.max_sessions
+        return unless max&.> 0
+        return unless persistence_available?
+
+        sessions = configuration.persistence_adapter.list
+        excess = sessions.size - max
+        return unless excess > 0
+
+        # Delete oldest sessions first
+        with_timestamps = sessions.map { |id|
+          data = configuration.persistence_adapter.load(id)
+          created = data&.dig(:metadata, :created_at)
+          [id, created ? Time.parse(created) : Time.at(0)]
+        }.sort_by(&:last)
+
+        with_timestamps.first(excess).each do |id, _|
+          configuration.persistence_adapter.delete(id)
+        end
+
+        excess
+      rescue StandardError
+        nil
+      end
+
+      def persistence_available?
+        defined?(ActiveRecord::Base) &&
+          ActiveRecord::Base.connection.data_source_exists?("ask_sessions")
+      rescue StandardError
+        false
       end
 
       def core_rails_tools
