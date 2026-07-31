@@ -24,6 +24,7 @@ This creates:
 |---|---|
 | `config/initializers/ask.rb` | Agent + workflow configuration (graph block only generated when ask-graph is installed) |
 | `app/agents/application_agent.rb` | Base class for your agents |
+| `app/actions/application_action.rb` | Base class for your actions |
 | `app/workflows/application_workflow.rb` | Base class for your workflows (only with ask-graph) |
 | `db/migrate/*_create_ask_state.rb` | Shared key-value state table — workflow checkpoints and agent session indexes |
 | `db/migrate/*_create_ask_audit_logs.rb` | Agent session audit log |
@@ -64,6 +65,27 @@ Creates `app/workflows/notify_customer/workflow.rb` and `app/workflows/notify_cu
 module NotifyCustomer
   class Workflow < ApplicationWorkflow
     # step SomeStep
+  end
+end
+```
+
+### `ask:action NAME [NAMESPACE]`
+
+Scaffolds a new action — a user-facing operation callable from any channel (web, Slack, voice) by name:
+
+```bash
+rails generate ask:action create_workspace   # app/actions/create_workspace.rb
+rails generate ask:action chats create       # app/actions/chats/create.rb
+```
+
+Creates `app/actions/chats/create.rb`:
+
+```ruby
+module Chats
+  class Create < ApplicationAction
+    def call
+      Ask::Actions::Result.ok(message: "Chat created", data: { id: record.id })
+    end
   end
 end
 ```
@@ -131,6 +153,40 @@ result.payment
 ```
 
 Checkpoints are saved to the shared `ask_state` table, so workflows resume after crashes.
+
+### Actions
+
+Actions are the operations your users trigger — booking an appointment, creating a chat, upgrading a plan. They live in `app/actions/` and are dispatched **by name**, so any channel (web controller, Slack handler, voice agent) calls the same operation:
+
+```ruby
+# app/actions/chats/create.rb
+module Chats
+  class Create < ApplicationAction
+    def call
+      chat = context.channel.start_new_chat!
+      Ask::Actions::Result.ok(message: "Chat created", data: { chat: chat })
+    end
+  end
+end
+```
+
+```ruby
+# From any channel:
+context = Ask::Actions::Context.new(user: current_user, session: session)
+result = Ask::Actions.dispatch(action: "chats.create", context: context, params: { name: "general" })
+result.ok?      # => true
+result.message  # => "Chat created"
+result.data     # => { chat: ... }
+```
+
+By convention, `"chats.create"` resolves to `Chats::Create` — no registration needed (Zeitwerk autoloads `app/actions/`). Register explicitly to override the convention or to list actions in `Ask::Actions.available`:
+
+```ruby
+# config/initializers/ask.rb
+Ask::Actions.register "chats.create", Chats::Create
+```
+
+Unknown action names raise `Ask::Actions::Backend::UnknownAction` with a helpful message.
 
 ## Configuration
 

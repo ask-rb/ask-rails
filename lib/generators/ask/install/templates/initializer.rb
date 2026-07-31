@@ -31,3 +31,13 @@ if defined?(Ask::Graph)
   # Ask::Graph.default_step_timeout 30
   # Ask::Graph.default_workflow_timeout 60
 end
+
+# Actions
+#
+# Actions live in app/actions/ and are dispatched by name from any channel:
+#   Ask::Actions.dispatch(action: "chats.create", context: context, params: {})
+#
+# By convention, "chats.create" resolves to Chats::Create
+# (app/actions/chats/create.rb). Register explicitly to override the
+# convention or to list the action in Ask::Actions.available:
+# Ask::Actions.register "chats.create", Chats::Create

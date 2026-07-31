@@ -1,3 +1,31 @@
+## [0.8.0] — 2026-07-31
+
+### Added
+
+- **`Ask::Actions` — action convention** — user-facing operations callable from any channel (web, Slack, voice) by name:
+
+  ```ruby
+  Ask::Actions.dispatch(action: "chats.create", context: context, params: {})
+  ```
+
+  - `Ask::Actions::Result` — uniform response shape (`ok`/`error`, `message`, `data`, `code`)
+  - `Ask::Actions::Context` — per-request context bag; attributes become accessors
+  - `Ask::Actions::Backend` — dispatcher with explicit registration (`Ask::Actions.register`) and convention resolution (`"chats.create"` → `Chats::Create` via Zeitwerk). Unknown actions raise `Ask::Actions::Backend::UnknownAction` with guidance.
+
+- **`ask:action NAME [NAMESPACE]` generator** — scaffolds actions:
+
+  ```bash
+  rails generate ask:action create_workspace   # app/actions/create_workspace.rb
+  rails generate ask:action chats create       # app/actions/chats/create.rb → "chats.create"
+  ```
+
+- **Actions in install generator** — `ask:install` now creates `app/actions/` and `app/actions/application_action.rb` (base class with `call(context:, params:)` → `#call`). The initializer documents the actions block with a registration example.
+
+### Tested
+
+- 25 new tests (Result, Context, Backend, generators) — 48 runs, 141 assertions, 0 failures.
+- End-to-end smoke test in a fresh Rails 8.1 app: `ask:install` + `ask:action` (namespaced and top-level) run; `Ask::Actions.dispatch` resolves both via convention; unknown actions raise with a helpful message.
+
 ## [0.7.0] — 2026-07-31
 
 ### Added

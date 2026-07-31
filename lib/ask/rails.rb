@@ -9,4 +9,5 @@ end
 
 require_relative "rails/version"
 require_relative "rails/state"
+require_relative "actions"
 require_relative "rails/railtie" if defined?(::Rails::Railtie)

@@ -27,6 +27,14 @@ module Ask
         template "application_agent.rb", "app/agents/application_agent.rb"
       end
 
+      def create_actions_directory
+        empty_directory "app/actions"
+      end
+
+      def create_application_action
+        template "application_action.rb", "app/actions/application_action.rb"
+      end
+
       def create_workflows_directory
         return if skip_graph?
         empty_directory "app/workflows"
