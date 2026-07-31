@@ -4,23 +4,20 @@
 #
 # Subclass this to define agents:
 #
-#   class Agents::SupportBot < ApplicationAgent
+#   # app/agents/support_bot/agent.rb
+#   class SupportBotAgent < ApplicationAgent
 #     model "gpt-4o"
-#     system_prompt "You help users with support questions."
-#
-#     tool :search_knowledge_base
+#     tools :search_knowledge_base
 #   end
+#
+#   # app/agents/support_bot/instructions.md — auto-loaded as the system prompt
+#   # app/agents/support_bot/tools/search_knowledge_base.rb — per-agent tools
 #
 # Then run:
 #   agent = Ask::Agent.new("support_bot")
 #   agent.run("How do I reset my password?")
 #
 class ApplicationAgent < Ask::Agent::Definition
-  # Default instructions — override in subclasses
-  system_prompt "You are a helpful assistant."
-
-  # Uncomment to add built-in tools:
-  # tool :bash
-  # tool :read
-  # tool :grep
+  # Default instructions — override by adding an instructions.md file
+  # in the agent directory, or with option :system_prompt, "..."
 end

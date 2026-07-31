@@ -53,10 +53,12 @@ end
 class AgentGeneratorTest < Minitest::Test
   def test_agent_generator_file_exists
     path = File.expand_path("../../lib/generators/ask/agent_generator.rb", __dir__)
-    assert File.exist?(path), "Agent generator file should exist at #{path}"
+    assert File.exist?(path), "Generator file should exist at #{path}"
     content = File.read(path)
     assert_includes content, "NamedBase"
     assert_includes content, "file_name"
+    assert_includes content, 'app/agents/#{file_name}/agent.rb',
+      "Agent generator must use the directory convention (app/agents/<name>/agent.rb)"
   end
 
   def test_agent_template_exists
@@ -66,6 +68,13 @@ class AgentGeneratorTest < Minitest::Test
     assert_includes content, "class <%= class_name %> < ApplicationAgent"
     assert_includes content, "module Agents"
     assert_includes content, "class_name"
+  end
+
+  def test_agent_instructions_template_exists
+    path = File.expand_path("../../lib/generators/ask/agent/templates/instructions.md", __dir__)
+    assert File.exist?(path), "Instructions template should exist at #{path}"
+    content = File.read(path)
+    assert_includes content, "# <%= class_name %>"
   end
 end
 

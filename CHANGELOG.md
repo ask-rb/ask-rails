@@ -1,3 +1,15 @@
+## [0.9.0] — 2026-07-30
+
+### Fixed
+
+- **Agent generator + templates now follow the ask-agent directory convention.**
+  `rails generate ask:agent support_bot` creates `app/agents/support_bot/agent.rb`
+  + `instructions.md` + `tools/` (the discovery layout), not a flat
+  `app/agents/support_bot.rb`. Templates no longer reference the removed
+  `system_prompt`/`tool` Definition DSL — they use `model`, `provider`,
+  `max_turns`, and `tools` (plural), with instructions auto-loaded from
+  the sibling `instructions.md`.
+
 ## [0.8.0] — 2026-07-31
 
 ### Added

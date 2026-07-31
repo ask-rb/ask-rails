@@ -6,13 +6,17 @@
 #   agent = Ask::Agent.new("<%= file_name %>")
 #   response = agent.run("Hello")
 #
+# Instructions load automatically from instructions.md next to this file.
+# Per-agent tools live in tools/ — reference them with `tools :tool_name`.
+#
 module Agents
   class <%= class_name %> < ApplicationAgent
     # model "gpt-4o"
-    system_prompt "You are a helpful assistant."
+    # provider :openai
+    # max_turns 25
 
-    # tool :bash
-    # tool :read
-    # tool :grep
+    # tools :bash
+    # tools :read
+    # tools :grep
   end
 end

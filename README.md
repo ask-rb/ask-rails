@@ -41,15 +41,27 @@ Scaffolds a new agent:
 rails generate ask:agent support_bot
 ```
 
-Creates `app/agents/support_bot.rb`:
+Creates the agent directory convention used by ask-agent discovery:
+
+```
+app/agents/support_bot/
+├── agent.rb           # class Agents::SupportBot < ApplicationAgent
+├── instructions.md    # auto-loaded as the system prompt
+└── tools/             # per-agent tools (referenced with `tools :tool_name`)
+```
 
 ```ruby
+# app/agents/support_bot/agent.rb
 module Agents
   class SupportBot < ApplicationAgent
-    system_prompt "You are a helpful assistant."
+    model "gpt-4o"
+    # tools :search_knowledge_base
   end
 end
 ```
+
+Run it with `Ask::Agent.new("support_bot")`. The directory name is the
+agent name — keep the file named `agent.rb`.
 
 ### `ask:workflow NAME`
 
