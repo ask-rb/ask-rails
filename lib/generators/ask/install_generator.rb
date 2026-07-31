@@ -6,34 +6,54 @@ require "rails/generators/active_record"
 module Ask
   module Generators
     class InstallGenerator < ::Rails::Generators::Base
-      include ::Rails::Generators::Migration
+      include ::ActiveRecord::Generators::Migration
 
       source_root File.expand_path("install/templates", __dir__)
 
-      desc "Sets up ask-rb for Rails — creates initializer, state and audit log migrations"
+      desc "Sets up ask-rb for Rails — creates initializer, agents and workflows directories, and shared state migrations"
+
+      class_option :skip_graph, type: :boolean, default: false,
+                                desc: "Skip workflow scaffolding even if ask-graph is installed"
 
       def create_initializer
         template "initializer.rb", "config/initializers/ask.rb"
       end
 
+      def create_agents_directory
+        empty_directory "app/agents"
+      end
+
+      def create_application_agent
+        template "application_agent.rb", "app/agents/application_agent.rb"
+      end
+
+      def create_workflows_directory
+        return if skip_graph?
+        empty_directory "app/workflows"
+      end
+
+      def create_application_workflow
+        return if skip_graph?
+        template "application_workflow.rb", "app/workflows/application_workflow.rb"
+      end
+
       def create_state_migration
-        template "state_migration.rb", "db/migrate/#{next_migration_number}_create_ask_state.rb"
+        migration_template "state_migration.rb", "db/migrate/create_ask_state.rb"
       end
 
       def create_audit_log_migration
-        template "audit_log_migration.rb", "db/migrate/#{next_migration_number}_create_ask_audit_logs.rb"
+        migration_template "audit_log_migration.rb", "db/migrate/create_ask_audit_logs.rb"
       end
 
       private
 
-      def next_migration_number
-        # Rails requires exactly YYYYMMDDHHMMSS format
-        @migration_suffix ||= 0
-        now = Time.now.utc.strftime("%Y%m%d%H%M")
-        "#{now}#{format('%02d', @migration_suffix)}"
-      ensure
-        @migration_suffix = (@migration_suffix || 0) + 1
+      def skip_graph?
+        options[:skip_graph] || !defined?(Ask::Graph)
       end
+
+        def migration_version
+          ActiveRecord::Migration.current_version
+        end
     end
   end
 end

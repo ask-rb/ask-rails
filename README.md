@@ -1,36 +1,99 @@
 # ask-rails
 
-Rails integration for the [ask-rb](https://github.com/ask-rb) ecosystem. Provides generators, file conventions, and railtie for using AI agents in your Rails app.
+Rails integration for the [ask-rb](https://github.com/ask-rb) ecosystem. Provides generators, file conventions, and a railtie for building agents and workflows in your Rails app.
 
 ## Installation
 
+Add to your Gemfile:
+
+```ruby
+gem "ask-rails"
+gem "ask-graph"   # optional — add only if you use workflows
+```
+
+Run the installer:
+
 ```bash
-bundle add ask-rails
+bundle install
 rails generate ask:install
 ```
 
 This creates:
-- `config/initializers/ask.rb` — agent configuration
-- `app/agents/application_agent.rb` — base class for your agents
-- `app/agents/` — directory for agent definitions
 
-## Usage
+| File | Purpose |
+|---|---|
+| `config/initializers/ask.rb` | Agent + workflow configuration (graph block only generated when ask-graph is installed) |
+| `app/agents/application_agent.rb` | Base class for your agents |
+| `app/workflows/application_workflow.rb` | Base class for your workflows (only with ask-graph) |
+| `db/migrate/*_create_ask_state.rb` | Shared key-value state table — workflow checkpoints and agent session indexes |
+| `db/migrate/*_create_ask_audit_logs.rb` | Agent session audit log |
 
-Define an agent:
+The `ask_state` table is backed by `Ask::Rails::State` — an ActiveRecord adapter that works with any database (PostgreSQL, MySQL, SQLite). Workflow checkpoints and agent session persistence share the same table, keyed by convention.
+
+## Generators
+
+### `ask:agent NAME`
+
+Scaffolds a new agent:
+
+```bash
+rails generate ask:agent support_bot
+```
+
+Creates `app/agents/support_bot.rb`:
 
 ```ruby
-# app/agents/support_bot.rb
-class Agents::SupportBot < ApplicationAgent
-  model "gpt-4o"
-  system_prompt "You help users with support questions."
-
-  tool :bash
-  tool :read
-  tool :grep
+module Agents
+  class SupportBot < ApplicationAgent
+    system_prompt "You are a helpful assistant."
+  end
 end
 ```
 
-Run it:
+### `ask:workflow NAME`
+
+Scaffolds a new workflow (requires ask-graph):
+
+```bash
+rails generate ask:workflow notify_customer
+```
+
+Creates `app/workflows/notify_customer/workflow.rb` and `app/workflows/notify_customer/steps/`:
+
+```ruby
+module NotifyCustomer
+  class Workflow < ApplicationWorkflow
+    # step SomeStep
+  end
+end
+```
+
+### Skipping workflow scaffolding
+
+If you don't use ask-graph, install with:
+
+```bash
+rails generate ask:install --skip-graph
+```
+
+The initializer still works — the graph block is omitted when ask-graph isn't installed.
+
+## Usage
+
+### Agents
+
+```ruby
+# app/agents/support_bot.rb
+module Agents
+  class SupportBot < ApplicationAgent
+    model "gpt-4o"
+    system_prompt "You help users with support questions."
+
+    tool :bash
+    tool :read
+  end
+end
+```
 
 ```ruby
 agent = Ask::Agent.new("support_bot")
@@ -38,11 +101,36 @@ response = agent.run("Find all open issues in the codebase")
 puts response
 ```
 
-Or use `Ask.chat` for one-off conversations:
+### Workflows
 
 ```ruby
-Ask.chat("Summarize this article: #{text}")
+# app/workflows/order_fulfillment/workflow.rb
+module OrderFulfillment
+  class Workflow < ApplicationWorkflow
+    step ValidatePayment
+    step NotifyCustomer
+    step ShipOrder
+  end
+end
 ```
+
+```ruby
+# app/workflows/order_fulfillment/steps/validate_payment.rb
+module OrderFulfillment
+  class ValidatePayment
+    def call(context)
+      context.payment = PaymentService.charge(context.input[:order])
+    end
+  end
+end
+```
+
+```ruby
+result = OrderFulfillment::Workflow.call(order: order)
+result.payment
+```
+
+Checkpoints are saved to the shared `ask_state` table, so workflows resume after crashes.
 
 ## Configuration
 

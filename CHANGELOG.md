@@ -1,3 +1,68 @@
+## [0.7.0] — 2026-07-31
+
+### Added
+
+- **`ask:workflow NAME` generator** — scaffolds a workflow module under `app/workflows/<name>/` with `workflow.rb` and `steps/` directory. Requires ask-graph; aborts with a helpful message if it's not installed.
+
+- **`ask:agent NAME` generator** — scaffolds an individual agent under `app/agents/`.
+
+- **ask-graph support in install generator** — `ask:install` now creates `app/workflows/application_workflow.rb` and the workflows directory when ask-graph is installed. Pass `--skip-graph` to skip. The initializer's graph configuration block is only generated when ask-graph is present:
+
+  ```ruby
+  if defined?(Ask::Graph)
+    Ask::Graph.storage = ASK_STATE
+  end
+  ```
+
+### Changed
+
+- Shared `ask_state` table is explicitly documented as serving both agent sessions and workflow checkpoints.
+
+### Tested
+
+- 11 generator tests, 51 assertions, 0 failures.
+
+## [0.7.0] — 2026-07-31
+
+### Added
+
+- **`ask:agent NAME` generator** — scaffolds an individual agent under `app/agents/`:
+
+  ```bash
+  rails generate ask:agent support_bot
+  ```
+
+- **`ask:workflow NAME` generator** — scaffolds a workflow module under `app/workflows/<name>/` with `workflow.rb` and `steps/` directory. Requires ask-graph; aborts with a helpful message if it's not installed:
+
+  ```bash
+  rails generate ask:workflow notify_customer
+  ```
+
+- **`Ask::Rails::State`** — ActiveRecord-backed state adapter for the `ask_state` table. Used by ask-graph for workflow checkpoints. Works with any database adapter (PostgreSQL, MySQL, SQLite). Implements key-value storage plus ordered lists (for agent session indexes).
+
+- **ask-graph support in install generator** — `ask:install` now creates `app/workflows/application_workflow.rb` and the workflows directory when ask-graph is installed. Pass `--skip-graph` to skip. The initializer's graph block is only generated when ask-graph is present:
+
+  ```ruby
+  if defined?(Ask::Graph)
+    Ask::Graph.storage = Ask::Rails::State.new
+  end
+  ```
+
+### Changed
+
+- **Generators consolidated under `lib/generators/ask/`** — all three generators (`ask:install`, `ask:agent`, `ask:workflow`) now live at the standard Rails discovery path. The old railtie-registered `ask:rails:*` names and the duplicate `lib/generators/ask/install_generator.rb` were removed. No duplicated work between generators: `ask:install` owns one-time setup, `ask:agent`/`ask:workflow` own per-component scaffolding.
+
+- **Initializer fixed to use real APIs** — removed references to non-existent `Ask::State::PostgreSQL` and `config.state`. The agent block now only configures what ask-agent supports (audit log, default model).
+
+- **State migration uses `t.json` instead of `t.jsonb`** — works on PostgreSQL, MySQL, and SQLite.
+
+- **`migration_version` fix** — generated migrations now produce `ActiveRecord::Migration[8.1]` instead of the broken `Migration[[8.1]]`.
+
+### Tested
+
+- 24 tests, 67 assertions, 0 failures — including 13 tests for `Ask::Rails::State` against an in-memory SQLite database.
+- End-to-end smoke test in a fresh Rails app: `ask:install`, `ask:agent`, `ask:workflow` all run; migrations execute; a workflow checkpoint survives a second run via `Ask::Rails::State`.
+
 ## [0.6.0] — 2026-07-29
 
 ### Added

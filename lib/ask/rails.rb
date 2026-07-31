@@ -8,4 +8,5 @@ module Ask
 end
 
 require_relative "rails/version"
+require_relative "rails/state"
 require_relative "rails/railtie" if defined?(::Rails::Railtie)

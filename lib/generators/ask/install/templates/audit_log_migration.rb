@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
-class CreateAskAuditLogs < ActiveRecord::Migration[8.1]
+# Migration for ask-agent's audit log table.
+# This table records session events (tool calls, errors, token usage, etc.)
+# from every agent that has audit_log configured.
+class CreateAskAuditLogs < ActiveRecord::Migration[<%= migration_version %>]
   def change
     create_table :ask_audit_logs, if_not_exists: true do |t|
       t.string :session_id, null: false
