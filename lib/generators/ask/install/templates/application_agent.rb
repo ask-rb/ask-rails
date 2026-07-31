@@ -5,9 +5,11 @@
 # Subclass this to define agents:
 #
 #   # app/agents/support_bot/agent.rb
-#   class SupportBotAgent < ApplicationAgent
-#     model "gpt-4o"
-#     tools :search_knowledge_base
+#   module SupportBot
+#     class Agent < ApplicationAgent
+#       model "gpt-4o"
+#       tools :search_knowledge_base
+#     end
 #   end
 #
 #   # app/agents/support_bot/instructions.md — auto-loaded as the system prompt

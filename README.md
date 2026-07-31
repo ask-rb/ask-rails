@@ -45,15 +45,15 @@ Creates the agent directory convention used by ask-agent discovery:
 
 ```
 app/agents/support_bot/
-├── agent.rb           # class Agents::SupportBot < ApplicationAgent
+├── agent.rb           # module SupportBot; class Agent < ApplicationAgent
 ├── instructions.md    # auto-loaded as the system prompt
 └── tools/             # per-agent tools (referenced with `tools :tool_name`)
 ```
 
 ```ruby
 # app/agents/support_bot/agent.rb
-module Agents
-  class SupportBot < ApplicationAgent
+module SupportBot
+  class Agent < ApplicationAgent
     model "gpt-4o"
     # tools :search_knowledge_base
   end

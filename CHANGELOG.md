@@ -1,3 +1,17 @@
+## [0.15.0] — 2026-07-30
+
+### Added
+
+- **Zeitwerk integration — agent directories are ignored by the autoloader.**
+  ask-agent discovers agents, tools, and skills via direct `require`
+  (`app/agents/<name>/agent.rb`, `shared/tools/*.rb`, ...). Their class
+  names (`SupportBot::Agent`) don't match Zeitwerk's constant mapping
+  (`SupportBot::Agent` from `app/agents/support_bot/agent.rb` would be
+  expected as `SupportBot::Agent` — ambiguous), so the railtie now tells
+  Zeitwerk to ignore every directory under `app/agents/`. Prevents
+  `NameError` at eager load in production while keeping development
+  discovery intact.
+
 ## [0.14.0] — 2026-07-30
 
 ### Notes

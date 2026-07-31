@@ -9,8 +9,8 @@
 # Instructions load automatically from instructions.md next to this file.
 # Per-agent tools live in tools/ — reference them with `tools :tool_name`.
 #
-module Agents
-  class <%= class_name %> < ApplicationAgent
+module <%= class_name %>
+  class Agent < ApplicationAgent
     # model "gpt-4o"
     # provider :openai
     # max_turns 25

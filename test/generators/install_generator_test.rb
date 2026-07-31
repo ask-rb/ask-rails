@@ -65,8 +65,8 @@ class AgentGeneratorTest < Minitest::Test
     path = File.expand_path("../../lib/generators/ask/agent/templates/agent.rb", __dir__)
     assert File.exist?(path), "Agent template should exist at #{path}"
     content = File.read(path)
-    assert_includes content, "class <%= class_name %> < ApplicationAgent"
-    assert_includes content, "module Agents"
+    assert_includes content, "class Agent < ApplicationAgent"
+    assert_includes content, "module <%= class_name %>"
     assert_includes content, "class_name"
   end
 
