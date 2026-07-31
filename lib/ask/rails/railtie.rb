@@ -14,7 +14,7 @@ module Ask
         next unless agents_path.directory?
 
         Dir.glob(agents_path.join("*")).each do |entry|
-          Rails.autoloaders.main.ignore(entry) if File.directory?(entry)
+          ::Rails.autoloaders.main.ignore(entry) if File.directory?(entry)
         end
       end
     end
