@@ -30,30 +30,6 @@
 
 ### Added
 
-- **`ask:workflow NAME` generator** — scaffolds a workflow module under `app/workflows/<name>/` with `workflow.rb` and `steps/` directory. Requires ask-graph; aborts with a helpful message if it's not installed.
-
-- **`ask:agent NAME` generator** — scaffolds an individual agent under `app/agents/`.
-
-- **ask-graph support in install generator** — `ask:install` now creates `app/workflows/application_workflow.rb` and the workflows directory when ask-graph is installed. Pass `--skip-graph` to skip. The initializer's graph configuration block is only generated when ask-graph is present:
-
-  ```ruby
-  if defined?(Ask::Graph)
-    Ask::Graph.storage = ASK_STATE
-  end
-  ```
-
-### Changed
-
-- Shared `ask_state` table is explicitly documented as serving both agent sessions and workflow checkpoints.
-
-### Tested
-
-- 11 generator tests, 51 assertions, 0 failures.
-
-## [0.7.0] — 2026-07-31
-
-### Added
-
 - **`ask:agent NAME` generator** — scaffolds an individual agent under `app/agents/`:
 
   ```bash
