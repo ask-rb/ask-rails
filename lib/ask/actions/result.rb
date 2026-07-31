@@ -10,14 +10,13 @@ module Ask
     #   Ask::Actions::Result.ok(message: "Booking confirmed", data: { booking: booking })
     #   Ask::Actions::Result.error(message: "Slot unavailable", code: :slot_taken)
     class Result
-      attr_reader :ok, :message, :data, :code, :redirect_path
+      attr_reader :ok, :message, :data, :code
 
-      def initialize(ok:, message:, data: {}, code: nil, redirect_path: nil)
+      def initialize(ok:, message:, data: {}, code: nil)
         @ok = ok
         @message = message
         @data = data
         @code = code
-        @redirect_path = redirect_path
       end
 
       def ok?
@@ -29,15 +28,15 @@ module Ask
       end
 
       def to_h
-        { ok: ok, message: message, data: data, code: code, redirect_path: redirect_path }
+        { ok: ok, message: message, data: data, code: code }
       end
 
-      def self.ok(message: "", data: {}, code: nil, redirect_path: nil)
-        new(ok: true, message: message, data: data, code: code, redirect_path: redirect_path)
+      def self.ok(message: "", data: {}, code: nil)
+        new(ok: true, message: message, data: data, code: code)
       end
 
-      def self.error(message: "", data: {}, code: nil, redirect_path: nil)
-        new(ok: false, message: message, data: data, code: code, redirect_path: redirect_path)
+      def self.error(message: "", data: {}, code: nil)
+        new(ok: false, message: message, data: data, code: code)
       end
     end
   end

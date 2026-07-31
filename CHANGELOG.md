@@ -1,8 +1,4 @@
-## [0.13.0] — 2026-07-30
-
-### Added
-
-- **`Ask::Actions::Result#redirect_path`** — optional channel-relative redirect target on action results (used by web adapters to bounce the user after an action).
+## [0.12.0] — 2026-07-30
 
 ### Fixed
 
