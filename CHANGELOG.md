@@ -1,3 +1,13 @@
+## [0.14.0] — 2026-07-30
+
+### Notes
+
+- 0.13.0 was yanked (redirect_path added to Ask::Actions::Result, then reverted —
+  channel adapters own their rendering concerns; the core Result stays
+  `ok/message/data/code`).
+
+## [0.12.0] — 2026-07-30
+
 ## [0.12.0] — 2026-07-30
 
 ### Fixed

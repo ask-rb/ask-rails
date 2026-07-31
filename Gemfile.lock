@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ask-rails (0.11.0)
+    ask-rails (0.14.0)
       ask-agent (>= 0.1)
       rails (>= 7.1)
 
@@ -346,7 +346,7 @@ CHECKSUMS
   ask-core (0.8.0)
   ask-instrumentation (0.2.1)
   ask-llm-providers (0.10.0)
-  ask-rails (0.11.0)
+  ask-rails (0.14.0)
   ask-sandbox-providers (0.1.2) sha256=388d2486d6d8f0b78a5fc87f90d56095892f88dff6197b74e081ea96833c0500
   ask-schema (0.1.1)
   ask-skills (0.4.1) sha256=6bcaaac8a10a0869e726a5047c9aecc33c4fcbca77c00d5ce3a78ee5da0fb8f9
