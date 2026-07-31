@@ -17,6 +17,21 @@ module Ask
           ::Rails.autoloaders.main.ignore(entry) if File.directory?(entry)
         end
       end
+
+      # Agent tools (app/agents/shared/tools/*.rb and per-agent
+      # app/agents/*/tools/*.rb) are required at boot so the Ask::Tools
+      # registry is populated and their constants resolve anywhere —
+      # including code compiled before the first agent discovery (e.g. test
+      # classes referencing Tools::Billing::InquiryTool). ask-agent's own
+      # lazy discovery re-requires them idempotently.
+      initializer "ask_rails.agent_tools" do |app|
+        agents_path = app.root.join("app/agents")
+        next unless agents_path.directory?
+
+        Dir[agents_path.join("shared/tools/*.rb"), agents_path.join("*/tools/*.rb")].uniq.sort.each do |file|
+          require file
+        end
+      end
     end
   end
 end

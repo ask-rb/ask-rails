@@ -1,3 +1,24 @@
+## [0.15.3] — 2026-07-30
+
+### Added
+
+- **Per-agent tools required at boot too.** The boot-time `require` now
+  covers `app/agents/*/tools/*.rb` as well as shared tools, so constants
+  for every registered tool resolve anywhere in the app (including test
+  classes compiled before discovery). The initializer was renamed to
+  `ask_rails.agent_tools`.
+
+## [0.15.2] — 2026-07-30
+
+### Added
+
+- **Shared tools required at boot.** `app/agents/shared/tools/*.rb` are
+  `require`d by a new `ask_rails.shared_tools` initializer so the
+  `Ask::Tools` registry is populated and tool constants (e.g.
+  `Tools::Billing::InquiryTool`) resolve anywhere in the app — including
+  code compiled before the first agent discovery, like test classes.
+  ask-agent's lazy discovery re-requires them idempotently.
+
 ## [0.15.0] — 2026-07-30
 
 ### Added
