@@ -1,17 +1,19 @@
 PATH
   remote: .
   specs:
-    ask-rails (0.15.8)
-      ask-agent (>= 0.40.19)
+    ask-rails (0.15.9)
+      ask-agent (>= 0.40.22)
       rails (>= 7.1)
 
 PATH
   remote: /Users/kaka/Code/ask-rb/ask-agent
   specs:
-    ask-agent (0.40.19)
+    ask-agent (0.40.22)
       ask-core (>= 0.12.0)
       ask-instrumentation (>= 0.1)
       ask-llm-providers (>= 0.13.7)
+      ask-runtime (>= 0.1.0)
+      ask-session (>= 0.1.0)
       ask-skills (>= 0.1)
       ask-state-providers (>= 0.4.6)
       ask-tools (>= 0.6.2)
@@ -32,8 +34,9 @@ PATH
 PATH
   remote: /Users/kaka/Code/ask-rb/ask-instrumentation
   specs:
-    ask-instrumentation (0.2.1)
+    ask-instrumentation (0.2.2)
       activesupport (>= 7.0)
+      ask-runtime (>= 0.1.0)
 
 PATH
   remote: /Users/kaka/Code/ask-rb/ask-llm-providers
@@ -142,11 +145,14 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
+    ask-runtime (0.1.0)
+      ask-core (>= 0.12.0)
     ask-sandbox-providers (0.1.2)
+    ask-session (0.1.0)
     ask-skills (0.5.3)
       ask-tools (>= 0.6.2)
-    ask-state-providers (0.4.7)
-      ask-core (>= 0.11.4)
+    ask-state-providers (0.4.8)
+      ask-core (>= 0.12.0)
       connection_pool (>= 2.2)
       pg (>= 1.5)
     base64 (0.3.0)
@@ -354,16 +360,18 @@ CHECKSUMS
   activerecord (8.1.3.1) sha256=0a2fb6c28f4938f6b013a3a549bec0a7e37d535f3dc8990e804bcc3258c0403b
   activestorage (8.1.3.1) sha256=f555254f387b1cffa499d2fd3115d12635eadc5b15206a8534316a67036163ef
   activesupport (8.1.3.1) sha256=85458765f25ea48b9019c46b6bb3fa5683197bf4280d9f06710a6e8d7a831376
-  ask-agent (0.40.19)
+  ask-agent (0.40.22)
   ask-auth (0.3.4)
   ask-core (0.12.0)
-  ask-instrumentation (0.2.1)
+  ask-instrumentation (0.2.2)
   ask-llm-providers (0.14.1)
-  ask-rails (0.15.8)
+  ask-rails (0.15.9)
+  ask-runtime (0.1.0) sha256=309d54c50995efde796512297e5d97438098a682ad860ff12b6ef717d7dedb46
   ask-sandbox-providers (0.1.2) sha256=388d2486d6d8f0b78a5fc87f90d56095892f88dff6197b74e081ea96833c0500
   ask-schema (0.1.2)
+  ask-session (0.1.0) sha256=aac55440a8fb2fbf2919530c01898d0e0590b54a49873157dff59a21447fe9cb
   ask-skills (0.5.3) sha256=cf98aaab68e6709b0f006044ce73b24ea87d5a4a228b041dc66354603f02c754
-  ask-state-providers (0.4.7) sha256=5ed4b538fe21e0bdcf62e2a810e5e5759c7dfc22461c026c88919a4540b79227
+  ask-state-providers (0.4.8) sha256=37e7bdd04306a7b1b31451a7ad14ed0719555f8a021d28526d195abebf021d2b
   ask-tools (0.6.5)
   ask-tools-shell (0.6.1)
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
